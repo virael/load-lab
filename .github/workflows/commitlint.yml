@@ -1,8 +1,9 @@
 name: Commit Lint
-on:
-  pull_request:
-  push:
-    branches: [main]
+on: [pull_request]
+
+permissions:
+  contents: read
+  pull-requests: read
 
 jobs:
   commitlint:
