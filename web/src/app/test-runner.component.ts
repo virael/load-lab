@@ -1,5 +1,5 @@
 import { DecimalPipe } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { form, FormField, min, required, validate } from '@angular/forms/signals';
 import { LoadTestService } from './load-test.service';
 import { TestRequest, TestResult } from './test.model';
@@ -61,6 +61,12 @@ import { TestRequest, TestResult } from './test.model';
 })
 export class TestRunnerComponent {
   private api = inject(LoadTestService);
+  private destroyRef = inject(DestroyRef);
+  private timer?: ReturnType<typeof setInterval>;
+
+  constructor() {
+    this.destroyRef.onDestroy(() => clearInterval(this.timer));
+  }
 
   private model = signal<TestRequest>({
     targetUrl: 'http://www.example.com',
@@ -87,21 +93,30 @@ export class TestRunnerComponent {
     if (this.testForm().invalid()) return;
     this.submitting.set(true);
 
-    this.api.startTest(this.testForm().value()).subscribe((created) => {
-      this.result.set(created);
-      this.pollUntilDone(created.id);
+    this.api.startTest(this.testForm().value()).subscribe({
+      next: (created) => {
+        this.result.set(created);
+        this.pollUntilDone(created.id);
+      },
+      error: () => this.submitting.set(false),
     });
   }
 
   private pollUntilDone(id: string): void {
-    const timer = setInterval(() => {
-      this.api.getResult(id).subscribe((r) => {
-        this.result.set(r);
-        if (r.status === 'DONE') {
-          clearInterval(timer);
-          this.submitting.set(false);
-        }
+    this.timer = setInterval(() => {
+      this.api.getResult(id).subscribe({
+        next: (r) => {
+          this.result.set(r);
+          if (r.status === 'DONE') this.stopPolling();
+        },
+        error: () => this.stopPolling(),
       });
     }, 1000);
+  }
+
+  private stopPolling(): void {
+    clearInterval(this.timer);
+    this.timer = undefined;
+    this.submitting.set(false);
   }
 }
