@@ -61,9 +61,10 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
 
-      - name: Install, build & test
+      - name: Install, lint, build & test
         working-directory: web
         run: |
           npm ci
+          npm run lint
           npm run build
           npm test -- --no-watch --no-progress
