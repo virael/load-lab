@@ -1,0 +1,44 @@
+version: 2
+updates:
+  - package-ecosystem: 'maven'
+    directory: '/services/controller'
+    schedule:
+      interval: 'weekly'
+    open-pull-requests-limit: 5
+    groups:
+      spring-boot:
+        patterns:
+          - 'org.springframework.boot:*'
+
+  - package-ecosystem: 'maven'
+    directory: '/services/sut'
+    schedule:
+      interval: 'weekly'
+    open-pull-requests-limit: 5
+    groups:
+      spring-boot:
+        patterns:
+          - 'org.springframework.boot:*'
+
+  - package-ecosystem: 'npm'
+    directory: '/web'
+    schedule:
+      interval: 'weekly'
+    open-pull-requests-limit: 5
+    groups:
+      angular:
+        patterns:
+          - '@angular/*'
+          - '@angular-eslint/*'
+
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    open-pull-requests-limit: 3
