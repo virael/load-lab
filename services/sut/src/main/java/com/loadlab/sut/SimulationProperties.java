@@ -4,6 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "sut")
 public record SimulationProperties(
-    long latencyMs,
+    long minLatencyMs,
+    long maxLatencyMs,
     double errorRate
 ) {}

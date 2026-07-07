@@ -1,5 +1,10 @@
 sut:
-  latency-ms: 50
+  min-latency-ms: 50
+  max-latency-ms: 50
   error-rate: 0.0
 server:
   port: 8081
+  tomcat:
+    threads:
+      max: 200
+    max-connections: 50
