@@ -8,22 +8,20 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/tests")
 public class TestController {
 
-    private final LoadTestService service;
+  private final LoadTestService service;
 
-    public TestController(LoadTestService service) {
-        this.service = service;
-    }
+  public TestController(LoadTestService service) {
+    this.service = service;
+  }
 
-    @PostMapping
-    public TestResult startTest(@Valid @RequestBody TestRequest request) {
-        return service.startTest(request);
-    }
+  @PostMapping
+  public TestResult startTest(@Valid @RequestBody TestRequest request) {
+    return service.startTest(request);
+  }
 
-    @GetMapping("/{id}/results")
-    public ResponseEntity<TestResult> getResults(@PathVariable String id) {
-        TestResult result = service.getResult(id);
-        return result == null
-                ? ResponseEntity.notFound().build()
-                : ResponseEntity.ok(result);
-    }
+  @GetMapping("/{id}/results")
+  public ResponseEntity<TestResult> getResults(@PathVariable String id) {
+    TestResult result = service.getResult(id);
+    return result == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(result);
+  }
 }
