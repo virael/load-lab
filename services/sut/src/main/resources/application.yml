@@ -1,0 +1,5 @@
+sut:
+  latency-ms: 50
+  error-rate: 0.0
+server:
+  port: 8081

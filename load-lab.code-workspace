@@ -1,0 +1,21 @@
+{
+	"folders": [
+		{
+			"name": "load-lab (root)",
+			"path": "."
+		},
+		{
+			"name": "sut (Spring Boot)",
+			"path": "services/sut"
+		}
+	],
+	"settings": {
+		"java.configuration.updateBuildConfiguration": "automatic",
+		"java.import.maven.enabled": true,
+		"java.import.exclusions": [
+			"**/node_modules/**",
+			"**/.git/**",
+			"**/web/**"
+		]
+	}
+}

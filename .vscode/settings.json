@@ -1,0 +1,14 @@
+{
+	// Help the Java language server find the nested Maven module even when the
+	// polyglot repo root is opened as the workspace folder.
+	"java.import.maven.enabled": true,
+	"java.configuration.updateBuildConfiguration": "automatic",
+	"java.import.exclusions": [
+		"**/node_modules/**",
+		"**/.git/**",
+		"**/web/**"
+	],
+	// Point the importer directly at the SUT pom so it's imported as a Maven
+	// project (source root = src/main/java) instead of a loose "non-project" file.
+	"java.import.projectSelection": "automatic"
+}
