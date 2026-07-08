@@ -32,7 +32,7 @@ public class LoadTestService {
 
   public TestResult startTest(TestRequest req) {
     String id = UUID.randomUUID().toString();
-    store.put(id, new TestResult(id, "PENDING", 0, 0.0, 0));
+    store.put(id, emptyResult(id, "PENDING"));
     liveMetrics.put(id, new TestMetrics());
     emitters.put(id, new CopyOnWriteArrayList<>());
     orchestrator.submit(() -> runTest(id, req));
@@ -41,11 +41,7 @@ public class LoadTestService {
 
   public TestResult getResult(String id) {
     TestMetrics metrics = liveMetrics.get(id);
-    if (metrics != null) {
-      return new TestResult(
-          id, "RUNNING", metrics.totalRequests(), metrics.avgLatencyMs(), metrics.errors());
-    }
-    return store.get(id);
+    return metrics != null ? toResult(id, "RUNNING", metrics) : store.get(id);
   }
 
   public SseEmitter subscribe(String id) {
@@ -68,10 +64,7 @@ public class LoadTestService {
       var list = emitters.get(id);
       if (metrics == null || list == null || list.isEmpty()) continue;
 
-      TestResult snapshot =
-          new TestResult(
-              id, "RUNNING", metrics.totalRequests(), metrics.avgLatencyMs(), metrics.errors());
-
+      TestResult snapshot = toResult(id, "RUNNING", metrics);
       for (SseEmitter emitter : list) {
         try {
           emitter.send(SseEmitter.event().name("snapshot").data(snapshot));
@@ -84,7 +77,7 @@ public class LoadTestService {
 
   private void runTest(String id, TestRequest req) {
     TestMetrics metrics = liveMetrics.get(id);
-    store.put(id, new TestResult(id, "RUNNING", 0, 0.0, 0));
+    store.put(id, emptyResult(id, "RUNNING"));
 
     ExecutorService pool = Executors.newFixedThreadPool(req.virtualUsers());
     long endTime = System.nanoTime() + req.durationSeconds() * 1_000_000_000L;
@@ -110,7 +103,8 @@ public class LoadTestService {
                   } catch (Exception e) {
                     isError = true;
                   } finally {
-                    metrics.recordRequest(System.nanoTime() - start, isError);
+                    long latencyMs = (System.nanoTime() - start) / 1_000_000;
+                    metrics.recordRequest(latencyMs, isError);
                   }
                 }
               }));
@@ -124,9 +118,7 @@ public class LoadTestService {
     }
     pool.shutdown();
 
-    TestResult finalResult =
-        new TestResult(
-            id, "DONE", metrics.totalRequests(), metrics.avgLatencyMs(), metrics.errors());
+    TestResult finalResult = toResult(id, "DONE", metrics);
     store.put(id, finalResult);
 
     var list = emitters.get(id);
@@ -142,5 +134,22 @@ public class LoadTestService {
     }
     liveMetrics.remove(id);
     emitters.remove(id);
+  }
+
+  private TestResult toResult(String id, String status, TestMetrics metrics) {
+    TestMetrics.Snapshot snap = metrics.snapshot();
+    return new TestResult(
+        id,
+        status,
+        metrics.totalRequests(),
+        snap.avgMs(),
+        metrics.errors(),
+        snap.p50Ms(),
+        snap.p95Ms(),
+        snap.p99Ms());
+  }
+
+  private TestResult emptyResult(String id, String status) {
+    return new TestResult(id, status, 0, 0.0, 0, 0, 0, 0);
   }
 }
