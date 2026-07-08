@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [ main ]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -28,13 +28,11 @@ jobs:
         run: |
           chmod +x mvnw
           ./mvnw -B verify
-
       - name: Upload coverage report (artifact)
         uses: actions/upload-artifact@v4
         with:
           name: jacoco-report-controller
           path: services/controller/target/site/jacoco
-
       - name: Comment coverage on PR
         if: github.event_name == 'pull_request'
         uses: madrapps/jacoco-report@v1.8.0
@@ -47,35 +45,78 @@ jobs:
   sut:
     name: Backend (sut)
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
           cache: maven
-
       - name: Build & test
         working-directory: services/sut
         run: |
           chmod +x mvnw
           ./mvnw -B verify
+      - name: Upload coverage report (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report-sut
+          path: services/sut/target/site/jacoco
+      - name: Comment coverage on PR
+        if: github.event_name == 'pull_request'
+        uses: madrapps/jacoco-report@v1.8.0
+        with:
+          paths: ${{ github.workspace }}/services/sut/target/site/jacoco/jacoco.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          title: Code Coverage (sut)
+          update-comment: true
+
+  # worker:
+  #   name: Backend (worker)
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     pull-requests: write
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Set up JDK 21
+  #       uses: actions/setup-java@v4
+  #       with:
+  #         distribution: temurin
+  #         java-version: '21'
+  #         cache: maven
+  #     - name: Build & test
+  #       working-directory: services/worker
+  #       run: |
+  #         chmod +x mvnw
+  #         ./mvnw -B verify
+  #     - name: Upload coverage report (artifact)
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: jacoco-report-worker
+  #         path: services/worker/target/site/jacoco
+  #     - name: Comment coverage on PR
+  #       if: github.event_name == 'pull_request'
+  #       uses: madrapps/jacoco-report@v1.8.0
+  #       with:
+  #         paths: ${{ github.workspace }}/services/worker/target/site/jacoco/jacoco.xml
+  #         token: ${{ secrets.GITHUB_TOKEN }}
+  #         title: Code Coverage (worker)
+  #         update-comment: true
 
   frontend:
     name: Frontend (web)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up Node 22
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
           cache-dependency-path: web/package-lock.json
-
       - name: Install, lint, build & test
         working-directory: web
         run: |
