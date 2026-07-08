@@ -14,11 +14,14 @@ jobs:
     name: Backend (controller)
     runs-on: ubuntu-latest
     permissions:
+      # Declaring `permissions` sets every unlisted scope to `none`.
+      # `contents: read` is required for actions/checkout on a private repo.
+      contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
@@ -29,7 +32,7 @@ jobs:
           chmod +x mvnw
           ./mvnw -B verify
       - name: Upload coverage report (artifact)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: jacoco-report-controller
           path: services/controller/target/site/jacoco
@@ -46,11 +49,12 @@ jobs:
     name: Backend (sut)
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
@@ -61,7 +65,7 @@ jobs:
           chmod +x mvnw
           ./mvnw -B verify
       - name: Upload coverage report (artifact)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: jacoco-report-sut
           path: services/sut/target/site/jacoco
@@ -78,11 +82,12 @@ jobs:
   #   name: Backend (worker)
   #   runs-on: ubuntu-latest
   #   permissions:
+  #     contents: read
   #     pull-requests: write
   #   steps:
-  #     - uses: actions/checkout@v4
+  #     - uses: actions/checkout@v7
   #     - name: Set up JDK 21
-  #       uses: actions/setup-java@v4
+  #       uses: actions/setup-java@v5
   #       with:
   #         distribution: temurin
   #         java-version: '21'
@@ -93,7 +98,7 @@ jobs:
   #         chmod +x mvnw
   #         ./mvnw -B verify
   #     - name: Upload coverage report (artifact)
-  #       uses: actions/upload-artifact@v4
+  #       uses: actions/upload-artifact@v7
   #       with:
   #         name: jacoco-report-worker
   #         path: services/worker/target/site/jacoco
@@ -110,9 +115,9 @@ jobs:
     name: Frontend (web)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up Node 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
           cache: npm
