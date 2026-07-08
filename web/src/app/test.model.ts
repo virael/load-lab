@@ -10,4 +10,7 @@ export interface TestResult {
   totalRequests: number;
   avgLatencyMs: number;
   errors: number;
+  p50Ms: number;
+  p95Ms: number;
+  p99Ms: number;
 }

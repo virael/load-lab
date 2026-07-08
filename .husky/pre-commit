@@ -1,6 +1,9 @@
 #!/usr/bin/env sh
 
-CHANGED_JAVA=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^services/(controller|sut)/.*\.java$')
+# NOTE: husky runs this with `sh -e`, so a failing command aborts the script.
+# grep exits 1 when nothing matches, which is the normal "no Java staged" case —
+# `|| true` keeps that from killing the commit.
+CHANGED_JAVA=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^services/(controller|sut)/.*\.java$' || true)
 
 if [ -n "$CHANGED_JAVA" ]; then
   echo "Java files staged — running Spotless..."
@@ -14,3 +17,5 @@ if [ -n "$CHANGED_JAVA" ]; then
 
   git add services/controller services/sut
 fi
+
+exit 0
