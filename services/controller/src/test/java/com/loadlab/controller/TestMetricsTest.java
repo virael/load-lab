@@ -1,11 +1,11 @@
 package com.loadlab.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
+
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.within;
 import org.junit.jupiter.api.Test;
 
 class TestMetricsTest {
@@ -56,6 +56,7 @@ class TestMetricsTest {
           () -> {
             try {
               start.await();
+
               for (int j = 0; j < callsPerThread; j++) {
                 metrics.recordRequest(1_000_000, false);
               }
@@ -64,13 +65,6 @@ class TestMetricsTest {
               done.countDown();
             }
           });
-
-
-
-
-
-
-          
     }
 
     start.countDown();

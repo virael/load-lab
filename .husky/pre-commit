@@ -1,4 +1,3 @@
-cat > .husky/pre-commit << 'SH'
 #!/usr/bin/env sh
 
 CHANGED_JAVA=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^services/(controller|sut)/.*\.java$')
@@ -15,5 +14,3 @@ if [ -n "$CHANGED_JAVA" ]; then
 
   git add services/controller services/sut
 fi
-SH
-chmod +x .husky/pre-commit
