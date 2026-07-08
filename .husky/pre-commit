@@ -1,0 +1,19 @@
+cat > .husky/pre-commit << 'SH'
+#!/usr/bin/env sh
+
+CHANGED_JAVA=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^services/(controller|sut)/.*\.java$')
+
+if [ -n "$CHANGED_JAVA" ]; then
+  echo "Java files staged — running Spotless..."
+
+  if echo "$CHANGED_JAVA" | grep -q '^services/controller/'; then
+    (cd services/controller && ./mvnw -q spotless:apply) || exit 1
+  fi
+  if echo "$CHANGED_JAVA" | grep -q '^services/sut/'; then
+    (cd services/sut && ./mvnw -q spotless:apply) || exit 1
+  fi
+
+  git add services/controller services/sut
+fi
+SH
+chmod +x .husky/pre-commit
