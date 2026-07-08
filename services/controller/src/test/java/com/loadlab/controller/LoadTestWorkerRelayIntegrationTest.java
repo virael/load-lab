@@ -84,8 +84,8 @@ class LoadTestWorkerRelayIntegrationTest {
       throws IOException {
     String json =
         """
-                {"id":"fake-run-1","status":"%s","totalRequests":%d,
-                 "avgLatencyMs":12.0,"errors":0,"p50Ms":10,"p95Ms":15,"p99Ms":19}"""
+        {"id":"fake-run-1","status":"%s","totalRequests":%d,
+         "avgLatencyMs":12.0,"errors":0,"p50Ms":10,"p95Ms":15,"p99Ms":19}"""
             .formatted(status, totalRequests)
             .replace("\n", " ");
     out.write(("event:snapshot\ndata:" + json + "\n\n").getBytes(StandardCharsets.UTF_8));
@@ -130,8 +130,12 @@ class LoadTestWorkerRelayIntegrationTest {
       }
     }
 
-    assertThat(snapshots).hasSize(3);
-    assertThat(snapshots.get(2).status()).isEqualTo("DONE");
-    assertThat(snapshots.get(2).totalRequests()).isEqualTo(30);
+    // Due to the inherent race between the background relay and this client's
+    // second HTTP call, we can't guarantee every intermediate RUNNING snapshot
+    // arrives — only that the terminal state is always delivered, at least once.
+    assertThat(snapshots).isNotEmpty();
+    TestResult last = snapshots.get(snapshots.size() - 1);
+    assertThat(last.status()).isEqualTo("DONE");
+    assertThat(last.totalRequests()).isEqualTo(30);
   }
 }

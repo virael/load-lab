@@ -45,6 +45,17 @@ public class LoadTestService {
     SseEmitter emitter = new SseEmitter(0L);
     var list = emitters.get(id);
     if (list == null) {
+      // Either an unknown id, or the run already finished streaming.
+      // Replay the final result once so a late subscriber still sees
+      // the outcome instead of a silently empty stream.
+      TestResult last = store.get(id);
+      if (last != null) {
+        try {
+          emitter.send(SseEmitter.event().name("snapshot").data(last));
+        } catch (IOException ignored) {
+          // Client already gone — nothing to do.
+        }
+      }
       emitter.complete();
       return emitter;
     }
