@@ -1,5 +1,6 @@
 package com.loadlab.controller;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -22,7 +23,21 @@ public class WorkerClient {
     this.workerBaseUrl = workerBaseUrl;
   }
 
-  public TestResult startRun(TestRequest req) throws Exception {
+  public boolean isHealthy() {
+    try {
+      HttpRequest request =
+          HttpRequest.newBuilder(URI.create(workerBaseUrl + "/actuator/health"))
+              .timeout(Duration.ofSeconds(2))
+              .GET()
+              .build();
+      HttpResponse<Void> response = http.send(request, HttpResponse.BodyHandlers.discarding());
+      return response.statusCode() == 200;
+    } catch (Exception e) {
+      return false;
+    }
+  }
+
+  public TestResult startRun(TestRequest req) throws IOException, InterruptedException {
     String body = mapper.writeValueAsString(req);
     HttpRequest request =
         HttpRequest.newBuilder(URI.create(workerBaseUrl + "/runs"))
@@ -31,12 +46,19 @@ public class WorkerClient {
             .POST(HttpRequest.BodyPublishers.ofString(body))
             .build();
     HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+
+    if (response.statusCode() / 100 != 2) {
+      throw new IOException("Worker responded with status " + response.statusCode());
+    }
     return mapper.readValue(response.body(), TestResult.class);
   }
 
-  // Blocks the calling thread until the worker's stream reports DONE.
-  // Must always be called from a background thread, never from a request-handling one.
-  public void streamRun(String runId, Consumer<TestResult> onSnapshot) throws Exception {
+  // Blocks the calling thread until the worker's stream reports a terminal
+  // status.
+  // Must always be called from a background thread, never from a request-handling
+  // one.
+  public void streamRun(String runId, Consumer<TestResult> onSnapshot)
+      throws IOException, InterruptedException {
     HttpRequest request =
         HttpRequest.newBuilder(URI.create(workerBaseUrl + "/runs/" + runId + "/stream"))
             .timeout(Duration.ofMinutes(10))
