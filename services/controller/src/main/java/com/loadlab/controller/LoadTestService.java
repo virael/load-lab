@@ -12,6 +12,9 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @Service
 public class LoadTestService {
 
+  private static final int MAX_START_ATTEMPTS = 3;
+  private static final long INITIAL_BACKOFF_MS = 200;
+
   private final Map<String, TestResult> store = new ConcurrentHashMap<>();
   private final Map<String, CopyOnWriteArrayList<SseEmitter>> emitters = new ConcurrentHashMap<>();
   private final ExecutorService orchestrator = Executors.newCachedThreadPool();
@@ -22,19 +25,48 @@ public class LoadTestService {
   }
 
   public TestResult startTest(TestRequest req) {
-    TestResult initial;
-    try {
-      initial = workerClient.startRun(req);
-    } catch (Exception e) {
-      throw new IllegalStateException("Worker unreachable", e);
+    // Fast-fail for the common case (worker never started), without waiting
+    // through a full retry cycle. NOTE: this is a best-effort check, not a
+    // guarantee — the worker could still fail between this check and the
+    // actual call below (a classic check-then-act race in distributed systems).
+    if (!workerClient.isHealthy()) {
+      throw new WorkerUnavailableException("Worker health check failed before starting test");
     }
 
-    String id = initial.id();
+    TestResult initial = startRunWithRetry(req);
+    String id = initial.id(); // reuse the worker's id — single-worker setup for now
     store.put(id, initial);
     emitters.put(id, new CopyOnWriteArrayList<>());
 
     orchestrator.submit(() -> relayStream(id));
     return initial;
+  }
+
+  private TestResult startRunWithRetry(TestRequest req) {
+    long backoffMs = INITIAL_BACKOFF_MS;
+    Exception lastError = null;
+
+    for (int attempt = 1; attempt <= MAX_START_ATTEMPTS; attempt++) {
+      try {
+        return workerClient.startRun(req);
+      } catch (Exception e) {
+        lastError = e;
+        if (attempt < MAX_START_ATTEMPTS) {
+          sleepQuietly(backoffMs);
+          backoffMs *= 2; // exponential backoff: 200ms, 400ms
+        }
+      }
+    }
+    throw new WorkerUnavailableException(
+        "Worker did not accept the run after " + MAX_START_ATTEMPTS + " attempts", lastError);
+  }
+
+  private void sleepQuietly(long ms) {
+    try {
+      Thread.sleep(ms);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
   }
 
   public TestResult getResult(String id) {
@@ -45,15 +77,14 @@ public class LoadTestService {
     SseEmitter emitter = new SseEmitter(0L);
     var list = emitters.get(id);
     if (list == null) {
-      // Either an unknown id, or the run already finished streaming.
-      // Replay the final result once so a late subscriber still sees
-      // the outcome instead of a silently empty stream.
+      // Unknown id, or the run already finished streaming — replay the
+      // final result once so a late subscriber sees the outcome instead
+      // of a silently empty stream.
       TestResult last = store.get(id);
       if (last != null) {
         try {
           emitter.send(SseEmitter.event().name("snapshot").data(last));
         } catch (IOException ignored) {
-          // Client already gone — nothing to do.
         }
       }
       emitter.complete();
@@ -71,22 +102,45 @@ public class LoadTestService {
           id,
           snapshot -> {
             store.put(id, snapshot);
-            var list = emitters.get(id);
-            if (list == null) return;
-            for (SseEmitter emitter : list) {
-              try {
-                emitter.send(SseEmitter.event().name("snapshot").data(snapshot));
-                if ("DONE".equals(snapshot.status())) emitter.complete();
-              } catch (IOException e) {
-                list.remove(emitter);
-              }
-            }
+            broadcast(id, snapshot);
           });
     } catch (Exception e) {
-      var list = emitters.get(id);
-      if (list != null) list.forEach(emitter -> emitter.completeWithError(e));
+      // The worker connection dropped mid-stream. We deliberately do NOT
+      // attempt to reconnect here — that would need to reconcile a gap in
+      // history and is a bigger problem (Phase 6: resilience/backpressure).
+      // For now: abort cleanly, surfacing whatever partial data we last saw.
+      TestResult last = store.get(id);
+      TestResult failed =
+          new TestResult(
+              id,
+              "FAILED",
+              last != null ? last.totalRequests() : 0,
+              last != null ? last.avgLatencyMs() : 0.0,
+              last != null ? last.errors() : 0,
+              last != null ? last.p50Ms() : 0,
+              last != null ? last.p95Ms() : 0,
+              last != null ? last.p99Ms() : 0);
+      store.put(id, failed);
+      broadcast(id, failed);
     } finally {
       emitters.remove(id);
     }
+  }
+
+  private void broadcast(String id, TestResult result) {
+    var list = emitters.get(id);
+    if (list == null) return;
+    for (SseEmitter emitter : list) {
+      try {
+        emitter.send(SseEmitter.event().name("snapshot").data(result));
+        if (isTerminal(result.status())) emitter.complete();
+      } catch (IOException e) {
+        list.remove(emitter);
+      }
+    }
+  }
+
+  private boolean isTerminal(String status) {
+    return "DONE".equals(status) || "FAILED".equals(status);
   }
 }

@@ -6,7 +6,7 @@ export interface TestRequest {
 
 export interface TestResult {
   id: string;
-  status: 'PENDING' | 'RUNNING' | 'DONE';
+  status: 'PENDING' | 'RUNNING' | 'DONE' | 'FAILED';
   totalRequests: number;
   avgLatencyMs: number;
   errors: number;
