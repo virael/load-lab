@@ -37,6 +37,11 @@ class LoadTestWorkerRelayIntegrationTest {
   static void startFakeWorker() throws IOException {
     fakeWorker = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
 
+    // The controller pre-flights a health check before starting a run, so the
+    // fake worker must answer it or startTest() short-circuits into an error.
+    fakeWorker.createContext(
+        "/actuator/health", exchange -> sendJson(exchange, "{\"status\":\"UP\"}"));
+
     fakeWorker.createContext(
         "/runs",
         exchange ->
