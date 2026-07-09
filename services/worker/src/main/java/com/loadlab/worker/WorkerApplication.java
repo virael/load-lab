@@ -1,4 +1,4 @@
-package com.loadlab.controller;
+package com.loadlab.worker;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -6,9 +6,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @EnableScheduling
-public class ControllerApplication {
-
-  public static void main(String[] args) {
-    SpringApplication.run(ControllerApplication.class, args);
-  }
+public class WorkerApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(WorkerApplication.class, args);
+    }
 }

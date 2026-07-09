@@ -1,6 +1,6 @@
-package com.loadlab.controller;
+package com.loadlab.worker;
 
-public record TestResult(
+public record RunResult(
     String id,
     String status,
     long totalRequests,
@@ -8,4 +8,5 @@ public record TestResult(
     long errors,
     long p50Ms,
     long p95Ms,
-    long p99Ms) {}
+    long p99Ms
+) {}
