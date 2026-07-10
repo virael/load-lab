@@ -17,6 +17,7 @@ RUN java -Djarmode=tools -jar application.jar extract --layers --launcher --dest
 
 # ---- Stage 3: assemble the final, minimal runtime image ----
 FROM eclipse-temurin:21-jre
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 RUN addgroup --system spring && adduser --system --ingroup spring spring
 USER spring:spring
