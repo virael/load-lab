@@ -31,6 +31,9 @@ jobs:
         run: |
           chmod +x mvnw
           ./mvnw -B verify
+      - name: Build Docker image
+        working-directory: services/controller
+        run: docker build -t load-lab-controller:ci .
       - name: Upload coverage report (artifact)
         uses: actions/upload-artifact@v7
         with:
@@ -64,6 +67,9 @@ jobs:
         run: |
           chmod +x mvnw
           ./mvnw -B verify
+      - name: Build Docker image
+        working-directory: services/controller
+        run: docker build -t load-lab-controller:ci .
       - name: Upload coverage report (artifact)
         uses: actions/upload-artifact@v7
         with:
@@ -97,6 +103,9 @@ jobs:
         run: |
           chmod +x mvnw
           ./mvnw -B verify
+      - name: Build Docker image
+        working-directory: services/controller
+        run: docker build -t load-lab-controller:ci .
       - name: Upload coverage report (artifact)
         uses: actions/upload-artifact@v7
         with:
