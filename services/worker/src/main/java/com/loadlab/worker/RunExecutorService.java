@@ -182,10 +182,11 @@ public class RunExecutorService {
         metrics.errors(),
         snap.p50Ms(),
         snap.p95Ms(),
-        snap.p99Ms());
+        snap.p99Ms(),
+        snap.histogramBytes());
   }
 
   private RunResult emptyResult(String id, String status) {
-    return new RunResult(id, status, 0, 0.0, 0, 0, 0, 0);
+    return new RunResult(id, status, 0, 0.0, 0, 0, 0, 0, null);
   }
 }
