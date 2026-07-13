@@ -4,7 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.BDDMockito.given;
 
+import java.nio.ByteBuffer;
 import java.time.Duration;
+import java.util.Arrays;
+import org.HdrHistogram.Histogram;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,19 +50,49 @@ class LoadTestMetricsRelayIntegrationTest {
     }
   }
 
+  private static byte[] encode(long... values) {
+    Histogram h = new Histogram(1, 60_000, 2);
+    for (long v : values) h.recordValue(v);
+    ByteBuffer buffer = ByteBuffer.allocate(h.getNeededByteBufferCapacity());
+    int len = h.encodeIntoCompressedByteBuffer(buffer);
+    byte[] bytes = new byte[len];
+    buffer.rewind();
+    buffer.get(bytes, 0, len);
+    return bytes;
+  }
+
+  private static long[] repeat(long value, int count) {
+    long[] values = new long[count];
+    Arrays.fill(values, value);
+    return values;
+  }
+
   @Test
-  void mergesSubResultsFromEveryWorkerIntoOneTestResult() {
+  void computesTruePercentilesByMergingWorkerHistograms() {
     // 9 VU over 3 workers -> sub-runs testId-0, testId-1, testId-2.
     TestResult started = loadTestService.startTest(new TestRequest("http://example.invalid", 9, 1));
     String testId = started.id();
     assertThat(started.status()).isEqualTo("PENDING");
 
-    // Stand in for what three real workers would publish.
-    for (int i = 0; i < 3; i++) {
-      String subId = testId + "-" + i;
-      kafkaTemplate.send(
-          "test-metrics", subId, new TestResult(subId, "DONE", 10, 20.0, 1, 5, 8, 30 + i));
-    }
+    // Two fast workers, one carrying a slow tail. No single worker's own p99 sees
+    // the tail the way the merged distribution does.
+    byte[] fast = encode(repeat(10, 100));
+    long[] tailValues = repeat(10, 100);
+    Arrays.fill(tailValues, 95, 100, 900L);
+    byte[] slow = encode(tailValues);
+
+    kafkaTemplate.send(
+        "test-metrics",
+        testId + "-0",
+        new TestResult(testId + "-0", "DONE", 100, 10.0, 0, 10, 10, 10, fast));
+    kafkaTemplate.send(
+        "test-metrics",
+        testId + "-1",
+        new TestResult(testId + "-1", "DONE", 100, 10.0, 1, 10, 10, 10, fast));
+    kafkaTemplate.send(
+        "test-metrics",
+        testId + "-2",
+        new TestResult(testId + "-2", "DONE", 100, 54.5, 2, 10, 900, 900, slow));
 
     await()
         .atMost(Duration.ofSeconds(10))
@@ -68,9 +101,13 @@ class LoadTestMetricsRelayIntegrationTest {
               TestResult merged = loadTestService.getResult(testId);
               assertThat(merged).isNotNull();
               assertThat(merged.status()).isEqualTo("DONE");
-              assertThat(merged.totalRequests()).isEqualTo(30); // 3 x 10, summed
-              assertThat(merged.errors()).isEqualTo(3); // 3 x 1, summed
-              assertThat(merged.p99Ms()).isEqualTo(32); // max-of-workers, deliberately naive
+              assertThat(merged.totalRequests()).isEqualTo(300); // summed
+              assertThat(merged.errors()).isEqualTo(3); // summed
+              // Computed from the merged histogram, not from the workers' numbers.
+              assertThat(merged.p50Ms()).isBetween(9L, 11L);
+              assertThat(merged.p99Ms()).isGreaterThanOrEqualTo(900L);
+              // The raw distribution is not forwarded to SSE subscribers.
+              assertThat(merged.histogram()).isNull();
             });
   }
 
@@ -79,9 +116,11 @@ class LoadTestMetricsRelayIntegrationTest {
     TestResult started = loadTestService.startTest(new TestRequest("http://example.invalid", 9, 1));
     String testId = started.id();
 
-    // Only one of the three sub-runs reports in.
     String subId = testId + "-0";
-    kafkaTemplate.send("test-metrics", subId, new TestResult(subId, "DONE", 10, 20.0, 0, 5, 8, 30));
+    kafkaTemplate.send(
+        "test-metrics",
+        subId,
+        new TestResult(subId, "DONE", 10, 20.0, 0, 5, 8, 30, encode(repeat(20, 10))));
 
     await()
         .atMost(Duration.ofSeconds(10))
@@ -89,7 +128,7 @@ class LoadTestMetricsRelayIntegrationTest {
             () -> {
               TestResult merged = loadTestService.getResult(testId);
               assertThat(merged.totalRequests()).isEqualTo(10);
-              // The test is NOT done: two sub-runs are still outstanding.
+              // Not done: two sub-runs are still outstanding.
               assertThat(merged.status()).isEqualTo("RUNNING");
             });
   }
@@ -99,10 +138,11 @@ class LoadTestMetricsRelayIntegrationTest {
     TestResult started = loadTestService.startTest(new TestRequest("http://example.invalid", 9, 1));
     String testId = started.id();
 
+    byte[] hist = encode(repeat(10, 100));
     for (int i = 0; i < 3; i++) {
       String subId = testId + "-" + i;
       kafkaTemplate.send(
-          "test-metrics", subId, new TestResult(subId, "DONE", 10, 20.0, 0, 5, 8, 30));
+          "test-metrics", subId, new TestResult(subId, "DONE", 10, 10.0, 0, 10, 10, 10, hist));
     }
     await()
         .atMost(Duration.ofSeconds(10))
@@ -111,7 +151,9 @@ class LoadTestMetricsRelayIntegrationTest {
     // A worker's 1s scheduler can lose the race with its own DONE message.
     String lateSubId = testId + "-1";
     kafkaTemplate.send(
-        "test-metrics", lateSubId, new TestResult(lateSubId, "RUNNING", 7, 20.0, 0, 5, 8, 30));
+        "test-metrics",
+        lateSubId,
+        new TestResult(lateSubId, "RUNNING", 7, 10.0, 0, 10, 10, 10, hist));
 
     await()
         .during(Duration.ofSeconds(2))

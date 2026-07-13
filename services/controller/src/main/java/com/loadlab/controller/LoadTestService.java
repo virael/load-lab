@@ -1,6 +1,8 @@
 package com.loadlab.controller;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -123,19 +125,17 @@ public class LoadTestService {
     }
   }
 
-  // NAIVE aggregation — the sums are correct, but p50/p95/p99 below are NOT real
-  // merged percentiles (max-of-workers is a crude stand-in, and p50/p95 are not even
-  // attempted). Combining percentiles across workers correctly means merging raw
-  // HdrHistogram data, not pre-computed numbers. That is the whole subject of E4.4.
+  // Sums stay sums (always correct). Percentiles are now computed from the MERGED
+  // histograms rather than from the workers' pre-computed numbers — the max-of-p99
+  // stand-in from E4.3 is gone.
   private TestResult mergeSubResults(String testId) {
     Set<String> subIds = testSubIds.get(testId);
     if (subIds == null) return null; // test already completed and was cleaned up
 
     long totalRequests = 0;
     long errors = 0;
-    long p99Max = 0;
-    double weightedAvgSum = 0;
     boolean allDone = true;
+    List<byte[]> histograms = new ArrayList<>();
 
     for (String subId : subIds) {
       TestResult sub = subResults.get(subId);
@@ -145,14 +145,24 @@ public class LoadTestService {
       }
       totalRequests += sub.totalRequests();
       errors += sub.errors();
-      weightedAvgSum += sub.avgLatencyMs() * sub.totalRequests();
-      p99Max = Math.max(p99Max, sub.p99Ms());
       if (!"DONE".equals(sub.status())) allDone = false;
+      histograms.add(sub.histogram());
     }
 
-    double avgMs = totalRequests == 0 ? 0.0 : weightedAvgSum / totalRequests;
+    var merged = HistogramMerger.merge(histograms);
     String status = allDone ? "DONE" : "RUNNING";
-    return new TestResult(testId, status, totalRequests, avgMs, errors, 0, 0, p99Max);
+    // Null histogram on the way out: the frontend needs the numbers, not the raw
+    // distribution, and @JsonInclude(NON_NULL) keeps the field out of the payload.
+    return new TestResult(
+        testId,
+        status,
+        totalRequests,
+        merged.avgMs(),
+        errors,
+        merged.p50Ms(),
+        merged.p95Ms(),
+        merged.p99Ms(),
+        null);
   }
 
   // Drop the per-test routing state once the test is terminal. Without this, every
@@ -190,6 +200,6 @@ public class LoadTestService {
   }
 
   private TestResult emptyResult(String id, String status) {
-    return new TestResult(id, status, 0, 0.0, 0, 0, 0, 0);
+    return new TestResult(id, status, 0, 0.0, 0, 0, 0, 0, null);
   }
 }
