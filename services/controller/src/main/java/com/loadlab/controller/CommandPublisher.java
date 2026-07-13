@@ -15,8 +15,8 @@ public class CommandPublisher {
   }
 
   public void publish(RunCommand command) {
-    // Keyed by testId so all messages for the same test land on the same
-    // partition, preserving order per test once multiple workers exist (E4.2+).
-    kafkaTemplate.send(TOPIC, command.testId(), command);
+    // Keyed by subId, so distinct slices of one test can hash to different
+    // partitions and therefore reach different workers in the group.
+    kafkaTemplate.send(TOPIC, command.subId(), command);
   }
 }

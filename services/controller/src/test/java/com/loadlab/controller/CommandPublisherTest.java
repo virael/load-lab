@@ -29,7 +29,7 @@ class CommandPublisherTest {
 
   @Test
   void publishesRunCommandToTopic() {
-    var command = new RunCommand("test-1", "http://example.invalid", 5, 10);
+    var command = new RunCommand("test-1", "http://example.invalid", 5, 10, 0);
     publisher.publish(command);
 
     Map<String, Object> consumerProps =
