@@ -191,3 +191,61 @@ jobs:
           npm run lint
           npm run build
           npm test -- --no-watch --no-progress
+
+  compose-integration:
+    name: Compose integration (multi-worker)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # docker/build-push-action exports these behind the scenes; a bare
+      # `docker compose build` does not, so type=gha would silently no-op.
+      - name: Expose GitHub Actions cache variables
+        uses: crazy-max/ghaction-github-runtime@v3
+
+      # The default `docker` driver ignores type=gha without erroring. Only the
+      # docker-container driver actually honours it.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container
+
+      - name: Build stack (cached)
+        working-directory: deploy
+        run: docker compose build
+
+      - name: Start stack with 3 workers
+        working-directory: deploy
+        run: docker compose up -d --scale worker=3 --wait
+
+      - name: Smoke test — load test across the real multi-worker stack
+        run: |
+          set -euo pipefail
+          RESPONSE=$(curl -sf -X POST localhost:8080/tests \
+            -H "Content-Type: application/json" \
+            -d '{"targetUrl":"http://sut:8081/simulate","virtualUsers":15,"durationSeconds":5}')
+          TEST_ID=$(echo "$RESPONSE" | jq -r '.id')
+          echo "Started test $TEST_ID"
+
+          for i in $(seq 1 30); do
+            STATUS=$(curl -sf "localhost:8080/tests/$TEST_ID/results" | jq -r '.status')
+            echo "attempt $i: status=$STATUS"
+            [ "$STATUS" = "DONE" ] && break
+            sleep 2
+          done
+
+          RESULT=$(curl -sf "localhost:8080/tests/$TEST_ID/results")
+          echo "Final result: $RESULT"
+          echo "$RESULT" | jq -e '.status == "DONE"'
+          echo "$RESULT" | jq -e '.totalRequests > 0'
+          echo "$RESULT" | jq -e '.errors == 0'
+
+      - name: Dump logs on failure
+        if: failure()
+        working-directory: deploy
+        run: docker compose logs
+
+      - name: Tear down
+        if: always()
+        working-directory: deploy
+        run: docker compose down -v
