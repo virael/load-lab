@@ -39,15 +39,31 @@ public class RunExecutorService {
   // debugging — generates its own id. The live, Kafka-driven flow uses the
   // overload below with a controller-issued id instead.
   public RunResult startRun(RunRequest req) {
-    return startRun(UUID.randomUUID().toString(), req);
+    return startRun(UUID.randomUUID().toString(), req, 0);
   }
 
-  public RunResult startRun(String id, RunRequest req) {
+  public RunResult startRun(String id, RunRequest req, long rampDelayMs) {
     store.put(id, emptyResult(id, "PENDING"));
     liveMetrics.put(id, new RunMetrics());
     emitters.put(id, new CopyOnWriteArrayList<>());
-    orchestrator.submit(() -> runLoad(id, req));
+    // The ramp delay is deliberately inside the async task, not before it, so the
+    // Kafka listener thread returns immediately to poll for the next command
+    // instead of blocking on a sleep.
+    orchestrator.submit(
+        () -> {
+          sleepQuietly(rampDelayMs);
+          runLoad(id, req);
+        });
     return store.get(id);
+  }
+
+  private void sleepQuietly(long ms) {
+    if (ms <= 0) return;
+    try {
+      Thread.sleep(ms);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
   }
 
   public RunResult getResult(String id) {

@@ -13,11 +13,11 @@ services:
       retries: 5
       start_period: 10s
 
+  # No host port mapping: `--scale worker=3` cannot bind the same port three times,
+  # and nothing outside the compose network needs to reach a worker directly.
   worker:
     build:
       context: ../services/worker
-    ports:
-      - "8082:8082"
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
@@ -43,6 +43,11 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      # Partitions are the hard ceiling on parallelism within a consumer group: with
+      # 1, only one worker ever receives anything no matter how many you scale to.
+      # NOTE: this only applies to topics created from now on. An existing
+      # test-commands stays at its old partition count until the volume is wiped.
+      KAFKA_NUM_PARTITIONS: 6
       # The image defaults to /tmp/kraft-combined-logs; without this the volume
       # below mounts but the broker never writes to it.
       KAFKA_LOG_DIRS: /var/lib/kafka/data

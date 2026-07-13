@@ -16,6 +16,6 @@ public class CommandListener {
   public void onCommand(RunCommand command) {
     RunRequest req =
         new RunRequest(command.targetUrl(), command.virtualUsers(), command.durationSeconds());
-    runExecutorService.startRun(command.testId(), req);
+    runExecutorService.startRun(command.subId(), req, command.rampDelayMs());
   }
 }
