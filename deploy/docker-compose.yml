@@ -4,6 +4,14 @@ services:
   sut:
     build:
       context: ../services/sut
+      # type=gha is a no-op unless the build runs on a docker-container builder AND
+      # the GitHub Actions cache env vars are exposed. The default docker driver
+      # ignores it silently — no error, just no caching. Scopes match the ones the
+      # per-service CI jobs already use, so the cache is shared between them.
+      cache_from:
+        - type=gha,scope=sut
+      cache_to:
+        - type=gha,mode=max,scope=sut
     ports:
       - "8081:8081"
     healthcheck:
@@ -18,6 +26,10 @@ services:
   worker:
     build:
       context: ../services/worker
+      cache_from:
+        - type=gha,scope=worker
+      cache_to:
+        - type=gha,mode=max,scope=worker
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
@@ -63,6 +75,10 @@ services:
   controller:
     build:
       context: ../services/controller
+      cache_from:
+        - type=gha,scope=controller
+      cache_to:
+        - type=gha,mode=max,scope=controller
     ports:
       - "8080:8080"
     environment:
@@ -73,6 +89,12 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
 
 volumes:
   kafka-data:
