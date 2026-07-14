@@ -19,7 +19,7 @@
   },
   "homepage": "https://github.com/virael/load-lab#readme",
   "devDependencies": {
-    "@commitlint/cli": "^21.2.0",
+    "@commitlint/cli": "^21.2.1",
     "@commitlint/config-conventional": "^21.2.0",
     "husky": "^9.1.7"
   }
