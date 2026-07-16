@@ -96,5 +96,26 @@ services:
       retries: 5
       start_period: 10s
 
+  aggregator:
+    build:
+      context: ../services/aggregator
+      cache_from:
+        - type=gha,scope=aggregator
+      cache_to:
+        - type=gha,mode=max,scope=aggregator
+    ports:
+      - "8083:8083"
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
 volumes:
   kafka-data:

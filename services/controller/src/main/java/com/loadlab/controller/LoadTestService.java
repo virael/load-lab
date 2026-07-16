@@ -26,10 +26,15 @@ public class LoadTestService {
 
   private final CommandPublisher commandPublisher;
   private final WorkerClient workerClient;
+  private final ResultPublisher resultPublisher;
 
-  public LoadTestService(CommandPublisher commandPublisher, WorkerClient workerClient) {
+  public LoadTestService(
+      CommandPublisher commandPublisher,
+      WorkerClient workerClient,
+      ResultPublisher resultPublisher) {
     this.commandPublisher = commandPublisher;
     this.workerClient = workerClient;
+    this.resultPublisher = resultPublisher;
   }
 
   public TestResult startTest(TestRequest req) {
@@ -119,6 +124,11 @@ public class LoadTestService {
 
     store.put(testId, merged);
     broadcast(testId, merged);
+
+    // Hand the already-merged result to the aggregator's pipeline. Published on every
+    // snapshot (RUNNING included) so it can compute per-window deltas, not just the
+    // final total.
+    resultPublisher.publish(merged);
 
     if (isTerminal(merged.status())) {
       cleanupRouting(testId);
