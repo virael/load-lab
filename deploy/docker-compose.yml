@@ -107,8 +107,13 @@ services:
       - "8083:8083"
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_DATASOURCE_URL: jdbc:postgresql://timescaledb:5432/loadlab
+      SPRING_DATASOURCE_USERNAME: loadlab
+      SPRING_DATASOURCE_PASSWORD: loadlab
     depends_on:
       kafka:
+        condition: service_healthy
+      timescaledb:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
@@ -117,5 +122,21 @@ services:
       retries: 5
       start_period: 10s
 
+  timescaledb:
+    image: timescale/timescaledb:2.18.0-pg17
+    environment:
+      POSTGRES_DB: loadlab
+      POSTGRES_USER: loadlab
+      POSTGRES_PASSWORD: loadlab
+    volumes:
+      - timescale-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U loadlab -d loadlab"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
 volumes:
   kafka-data:
+  timescale-data:
