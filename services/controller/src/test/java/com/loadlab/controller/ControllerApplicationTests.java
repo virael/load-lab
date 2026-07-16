@@ -11,7 +11,7 @@ import org.springframework.kafka.test.context.EmbeddedKafka;
     partitions = 1,
     topics = {"test-commands", "test-metrics"},
     bootstrapServersProperty = "spring.kafka.bootstrap-servers")
-class ControllerApplicationTests {
+class ControllerApplicationTests extends AbstractPostgresIntegrationTest {
 
   @Test
   void contextLoads() {}

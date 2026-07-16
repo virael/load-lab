@@ -72,6 +72,30 @@
             <artifactId>spring-boot-starter-kafka</artifactId>
         </dependency>
 
+        <!-- Boot 4 no longer auto-configures Flyway from flyway-core alone; without
+             this starter migrations silently never run. Same set as the aggregator. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-flyway</artifactId>
+        </dependency>
+        <!-- Flyway 10 split database-specific support out of core: without this,
+             startup fails with "Unsupported Database: PostgreSQL". -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+        <!-- JdbcTemplate — plain JDBC, no JPA for one small relational table. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
+        <!-- JDBC driver; runtime only, never referenced directly in code. -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
         <!-- Back in the controller, but for a different job than in E3.1: not
              computing metrics from scratch, only decoding and merging what the
              workers measured. -->
@@ -101,6 +125,19 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers-kafka</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Enables @ServiceConnection: Boot wires spring.datasource.* from the
+             Testcontainers Postgres automatically, no @DynamicPropertySource. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-postgresql</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

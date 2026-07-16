@@ -35,7 +35,7 @@ import org.testcontainers.utility.DockerImageName;
 // deployed stack cannot drift apart on broker version.
 @SpringBootTest
 @Testcontainers
-class MultiWorkerAggregationIntegrationTest {
+class MultiWorkerAggregationIntegrationTest extends AbstractPostgresIntegrationTest {
 
   @Container
   static final KafkaContainer KAFKA =
