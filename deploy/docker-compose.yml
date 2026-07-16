@@ -84,10 +84,15 @@ services:
     environment:
       WORKER_BASE_URL: http://worker:8082
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/loadlab_control
+      SPRING_DATASOURCE_USERNAME: loadlab
+      SPRING_DATASOURCE_PASSWORD: loadlab
     depends_on:
       worker:
         condition: service_healthy
       kafka:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
@@ -137,6 +142,24 @@ services:
       retries: 5
       start_period: 10s
 
+  # Controller's own database (database-per-service): plain Postgres for relational
+  # test-run records, separate instance from the aggregator's TimescaleDB.
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: loadlab_control
+      POSTGRES_USER: loadlab
+      POSTGRES_PASSWORD: loadlab
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U loadlab -d loadlab_control"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
 volumes:
   kafka-data:
   timescale-data:
+  postgres-data:

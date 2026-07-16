@@ -25,7 +25,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
     partitions = 1,
     topics = {"test-commands", "test-metrics"},
     bootstrapServersProperty = "spring.kafka.bootstrap-servers")
-class LoadTestMetricsRelayIntegrationTest {
+class LoadTestMetricsRelayIntegrationTest extends AbstractPostgresIntegrationTest {
 
   @Autowired private KafkaTemplate<String, TestResult> kafkaTemplate;
 

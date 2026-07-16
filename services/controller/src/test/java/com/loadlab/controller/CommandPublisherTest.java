@@ -21,7 +21,7 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
     partitions = 1,
     topics = CommandPublisher.TOPIC,
     bootstrapServersProperty = "spring.kafka.bootstrap-servers")
-class CommandPublisherTest {
+class CommandPublisherTest extends AbstractPostgresIntegrationTest {
 
   @Autowired private CommandPublisher publisher;
 

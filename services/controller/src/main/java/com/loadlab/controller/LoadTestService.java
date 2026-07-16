@@ -27,14 +27,17 @@ public class LoadTestService {
   private final CommandPublisher commandPublisher;
   private final WorkerClient workerClient;
   private final ResultPublisher resultPublisher;
+  private final TestRepository testRepository;
 
   public LoadTestService(
       CommandPublisher commandPublisher,
       WorkerClient workerClient,
-      ResultPublisher resultPublisher) {
+      ResultPublisher resultPublisher,
+      TestRepository testRepository) {
     this.commandPublisher = commandPublisher;
     this.workerClient = workerClient;
     this.resultPublisher = resultPublisher;
+    this.testRepository = testRepository;
   }
 
   public TestResult startTest(TestRequest req) {
@@ -45,7 +48,10 @@ public class LoadTestService {
     }
 
     String testId = UUID.randomUUID().toString();
-    store.put(testId, emptyResult(testId, "PENDING"));
+    TestResult initial = emptyResult(testId, "PENDING");
+    store.put(testId, initial);
+    // Durable record of who/what/when, separate from the in-memory hot path.
+    testRepository.insertPending(initial, req);
     emitters.put(testId, new CopyOnWriteArrayList<>());
 
     int[] shares = LoadSplitter.computeShares(req.virtualUsers(), WORKERS_PER_TEST);
@@ -129,6 +135,9 @@ public class LoadTestService {
     // snapshot (RUNNING included) so it can compute per-window deltas, not just the
     // final total.
     resultPublisher.publish(merged);
+    // Persist the latest merged state onto the same row (UPDATE by id), keeping the
+    // in-memory store as the hot read path for getResult()/SSE.
+    testRepository.updateProgress(merged);
 
     if (isTerminal(merged.status())) {
       cleanupRouting(testId);
