@@ -1,9 +1,9 @@
 import { Component } from '@angular/core';
-import { TestRunnerComponent } from './test-runner.component';
+import { RouterLink, RouterOutlet } from '@angular/router';
 
 @Component({
   selector: 'app-root',
-  imports: [TestRunnerComponent],
+  imports: [RouterLink, RouterOutlet],
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })

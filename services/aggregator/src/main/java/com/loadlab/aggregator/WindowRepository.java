@@ -1,6 +1,7 @@
 package com.loadlab.aggregator;
 
 import java.sql.Timestamp;
+import java.util.List;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -20,5 +21,18 @@ public class WindowRepository {
         Timestamp.from(window.timestamp()),
         window.requestsInWindow(),
         window.errorsInWindow());
+  }
+
+  public List<WindowAggregator.Window> findByTestId(String testId) {
+    return jdbcTemplate.query(
+        "SELECT test_id, ts, requests_in_window, errors_in_window FROM metric_windows "
+            + "WHERE test_id = ? ORDER BY ts",
+        (rs, rowNum) ->
+            new WindowAggregator.Window(
+                rs.getString("test_id"),
+                rs.getTimestamp("ts").toInstant(),
+                rs.getLong("requests_in_window"),
+                rs.getLong("errors_in_window")),
+        testId);
   }
 }
