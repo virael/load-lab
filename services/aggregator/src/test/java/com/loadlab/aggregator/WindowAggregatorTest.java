@@ -40,7 +40,10 @@ class WindowAggregatorTest {
     aggregator.ingest(new TestResult("t1", "RUNNING", 100, 0, 0, 0, 0, 0, null));
     aggregator.ingest(new TestResult("t2", "RUNNING", 30, 0, 0, 0, 0, 0, null));
 
-    assertThat(aggregator.windowsFor("t1")).hasSize(1);
-    assertThat(aggregator.windowsFor("t2")).hasSize(1);
+    var t1Second = aggregator.ingest(new TestResult("t1", "RUNNING", 150, 0, 0, 0, 0, 0, null));
+    var t2Second = aggregator.ingest(new TestResult("t2", "RUNNING", 50, 0, 0, 0, 0, 0, null));
+
+    assertThat(t1Second.requestsInWindow()).isEqualTo(50);
+    assertThat(t2Second.requestsInWindow()).isEqualTo(20);
   }
 }
