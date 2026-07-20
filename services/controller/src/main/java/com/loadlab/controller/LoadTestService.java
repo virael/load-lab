@@ -1,6 +1,8 @@
 package com.loadlab.controller;
 
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -8,21 +10,39 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @Service
 public class LoadTestService {
 
+  private static final Logger log = LoggerFactory.getLogger(LoadTestService.class);
+
   private static final int WORKERS_PER_TEST = 3;
   private static final long RAMP_STEP_MS = 300;
+
+  // A worker reports every second (E4.2), so 15s of silence is well past jitter and
+  // GC pauses — it means the process is gone, not slow.
+  private static final Duration STUCK_THRESHOLD = Duration.ofSeconds(15);
+  private static final int MAX_RETRIES = 2;
 
   private final Map<String, TestResult> store = new ConcurrentHashMap<>();
   private final Map<String, CopyOnWriteArrayList<SseEmitter>> emitters = new ConcurrentHashMap<>();
   private final Map<String, String> subIdToTestId = new ConcurrentHashMap<>();
   private final Map<String, Set<String>> testSubIds = new ConcurrentHashMap<>();
   private final Map<String, TestResult> subResults = new ConcurrentHashMap<>();
+
+  // Watchdog state. Kafka commits the command's offset milliseconds after delivery,
+  // long before the run it started actually finishes, so a partition rebalance cannot
+  // recover work a worker had in flight when it died. Only the controller can notice
+  // the resulting silence, so it tracks liveness per sub-run here.
+  private final Map<String, Instant> subIdLastActivity = new ConcurrentHashMap<>();
+  private final Map<String, Integer> subIdRetryCount = new ConcurrentHashMap<>();
+  private final Map<String, RunCommand> subIdOriginalCommand = new ConcurrentHashMap<>();
 
   private final CommandPublisher commandPublisher;
   private final WorkerClient workerClient;
@@ -70,13 +90,16 @@ public class LoadTestService {
     try {
       for (int i = 0; i < shares.length; i++) {
         if (shares[i] == 0) continue;
-        commandPublisher.publish(
+        String subId = testId + "-" + i;
+        RunCommand command =
             new RunCommand(
-                testId + "-" + i,
-                req.targetUrl(),
-                shares[i],
-                req.durationSeconds(),
-                i * RAMP_STEP_MS));
+                subId, req.targetUrl(), shares[i], req.durationSeconds(), i * RAMP_STEP_MS);
+        commandPublisher.publish(command);
+        // Keep the exact command around: a redispatch has to be byte-identical,
+        // including the same subId, or the result would not route back to this test.
+        subIdLastActivity.put(subId, Instant.now());
+        subIdRetryCount.put(subId, 0);
+        subIdOriginalCommand.put(subId, command);
       }
     } catch (Exception e) {
       cleanupRouting(testId);
@@ -117,6 +140,11 @@ public class LoadTestService {
     String testId = subIdToTestId.get(subResult.id());
     if (testId == null) return; // stale, unknown, or already-finished sub-run
 
+    // Proof of life, refreshed on every snapshot. Deliberately AFTER the routing
+    // check: re-arming the watchdog for a sub-run that was already cleaned up would
+    // make a late straggler trigger a redispatch of a test that finished long ago.
+    subIdLastActivity.put(subResult.id(), Instant.now());
+
     TestResult previousSub = subResults.get(subResult.id());
     if (previousSub != null && isTerminal(previousSub.status())) {
       // The worker's 1s scheduler can race its own DONE. Never let a stale RUNNING
@@ -144,6 +172,72 @@ public class LoadTestService {
     }
   }
 
+  // A worker cannot detect its own death — that is what a crash is. So the controller
+  // watches for the silence instead, and republishes the command that went quiet.
+  @Scheduled(fixedRate = 5000)
+  void detectStuckSubRuns() {
+    Instant now = Instant.now();
+    for (var entry : subIdLastActivity.entrySet()) {
+      String subId = entry.getKey();
+      TestResult current = subResults.get(subId);
+      if (current != null && isTerminal(current.status())) continue;
+
+      if (Duration.between(entry.getValue(), now).compareTo(STUCK_THRESHOLD) > 0) {
+        handleStuckSubRun(subId);
+      }
+    }
+  }
+
+  private void handleStuckSubRun(String subId) {
+    String testId = subIdToTestId.get(subId);
+    if (testId == null) return; // test already finished and was cleaned up
+
+    int retries = subIdRetryCount.getOrDefault(subId, 0);
+    if (retries < MAX_RETRIES) {
+      RunCommand original = subIdOriginalCommand.get(subId);
+      if (original == null) return;
+      subIdRetryCount.put(subId, retries + 1);
+      // Reset the clock now, not when work resumes: the redispatched run needs a full
+      // threshold to report in before we consider it dead again.
+      subIdLastActivity.put(subId, Instant.now());
+      // Same subId on purpose — it is already registered in subIdToTestId/testSubIds,
+      // so whichever live worker picks this up routes back to the right test. If the
+      // "dead" worker turns out to be merely slow and finishes too, its snapshot just
+      // overwrites the same map entry. Newest wins; no request is counted twice.
+      log.warn(
+          "Sub-run {} silent for over {}s, redispatching (attempt {}/{})",
+          subId,
+          STUCK_THRESHOLD.toSeconds(),
+          retries + 1,
+          MAX_RETRIES);
+      commandPublisher.publish(original);
+      return;
+    }
+
+    // Out of retries. Marking this slice FAILED is the honest option: it lets the
+    // merge finish as PARTIAL instead of hanging in RUNNING forever, or — worse —
+    // reporting DONE for work that never ran.
+    log.error(
+        "Sub-run {} still silent after {} redispatches, marking FAILED — test {} can only be PARTIAL",
+        subId,
+        MAX_RETRIES,
+        testId);
+    subResults.put(subId, new TestResult(subId, "FAILED", 0, 0.0, 0, 0, 0, 0, null));
+    subIdLastActivity.remove(subId);
+
+    TestResult merged = mergeSubResults(testId);
+    if (merged == null) return;
+    store.put(testId, merged);
+    broadcast(testId, merged);
+    // Same tail as onMetrics: a PARTIAL is a real outcome and has to reach the
+    // aggregator and the durable row, not just the SSE stream.
+    resultPublisher.publish(merged);
+    testRepository.updateProgress(merged);
+    if (isTerminal(merged.status())) {
+      cleanupRouting(testId);
+    }
+  }
+
   // Sums stay sums (always correct). Percentiles are now computed from the MERGED
   // histograms rather than from the workers' pre-computed numbers — the max-of-p99
   // stand-in from E4.3 is gone.
@@ -153,23 +247,30 @@ public class LoadTestService {
 
     long totalRequests = 0;
     long errors = 0;
-    boolean allDone = true;
+    boolean anyFailed = false;
+    boolean allTerminal = true;
     List<byte[]> histograms = new ArrayList<>();
 
     for (String subId : subIds) {
       TestResult sub = subResults.get(subId);
       if (sub == null) {
-        allDone = false;
+        allTerminal = false;
         continue;
       }
+      if ("FAILED".equals(sub.status())) {
+        anyFailed = true;
+        continue; // contributes nothing: that slice of work genuinely never happened
+      }
+      if (!"DONE".equals(sub.status())) allTerminal = false;
       totalRequests += sub.totalRequests();
       errors += sub.errors();
-      if (!"DONE".equals(sub.status())) allDone = false;
       histograms.add(sub.histogram());
     }
 
     var merged = HistogramMerger.merge(histograms);
-    String status = allDone ? "DONE" : "RUNNING";
+    // Three states, not two. PARTIAL says "finished, but some of the load never ran" —
+    // neither a lie (DONE) nor a hang (RUNNING).
+    String status = !allTerminal ? "RUNNING" : anyFailed ? "PARTIAL" : "DONE";
     // Null histogram on the way out: the frontend needs the numbers, not the raw
     // distribution, and @JsonInclude(NON_NULL) keeps the field out of the payload.
     return new TestResult(
@@ -193,6 +294,13 @@ public class LoadTestService {
     for (String subId : subIds) {
       subIdToTestId.remove(subId);
       subResults.remove(subId);
+      // The watchdog maps must be cleared here too. Leaving them behind is not just a
+      // leak: detectStuckSubRuns judges liveness against subResults, which this method
+      // just emptied, so a surviving entry looks permanently silent and would
+      // redispatch the command of a test that already finished.
+      subIdLastActivity.remove(subId);
+      subIdRetryCount.remove(subId);
+      subIdOriginalCommand.remove(subId);
     }
   }
 
@@ -215,7 +323,7 @@ public class LoadTestService {
   }
 
   private boolean isTerminal(String status) {
-    return "DONE".equals(status) || "FAILED".equals(status);
+    return "DONE".equals(status) || "FAILED".equals(status) || "PARTIAL".equals(status);
   }
 
   private TestResult emptyResult(String id, String status) {
