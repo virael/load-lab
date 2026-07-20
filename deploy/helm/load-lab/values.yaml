@@ -6,6 +6,14 @@ image:
   # side-loaded into its own daemon, and Always makes it try (and fail) to pull them
   # from a registry instead. This cost a full debugging cycle in E6.3.
   pullPolicy: IfNotPresent
+  # Needed when the cluster pulls from a PRIVATE registry. Making the repo public did
+  # NOT make its packages public — that is a separate setting, and the load-lab
+  # packages are still private (verified: an anonymous GHCR token gets 403 for them
+  # and 200 for a known-public image). Without a pull secret every app pod lands in
+  # ImagePullBackOff and `helm --wait` times out.
+  # Empty by default because a local cluster side-loads its images instead.
+  # Set with: --set image.pullSecrets[0].name=ghcr
+  pullSecrets: []
 
 # The four application services. Each renders one Deployment + one Service from the
 # single loop in templates/deployment.yaml. Adding a fifth is a block here, not 40
