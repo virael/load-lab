@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sut
+  namespace: load-lab
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: sut }
+  template:
+    metadata:
+      labels: { app: sut }
+    spec:
+      containers:
+        - name: sut
+          image: ghcr.io/virael/load-lab-sut:latest
+          # IfNotPresent, not the :latest default of Always: a local cluster
+          # runs images side-loaded into its own daemon, and Always would make
+          # it try (and fail) to pull them from a registry instead.
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 8081 }]
+          readinessProbe:
+            httpGet: { path: /actuator/health, port: 8081 }
+            initialDelaySeconds: 10
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata: { name: sut, namespace: load-lab }
+spec:
+  selector: { app: sut }
+  ports: [{ port: 8081, targetPort: 8081 }]

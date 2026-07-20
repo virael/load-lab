@@ -12,6 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -22,7 +23,6 @@ public class LoadTestService {
 
   private static final Logger log = LoggerFactory.getLogger(LoadTestService.class);
 
-  private static final int WORKERS_PER_TEST = 3;
   private static final long RAMP_STEP_MS = 300;
 
   // A worker reports every second (E4.2), so 15s of silence is well past jitter and
@@ -49,16 +49,22 @@ public class LoadTestService {
   private final WorkerClient workerClient;
   private final ResultPublisher resultPublisher;
   private final TestRepository testRepository;
+  private final int workerCapacityVus;
+  private final int maxWorkersPerTest;
 
   public LoadTestService(
       CommandPublisher commandPublisher,
       WorkerClient workerClient,
       ResultPublisher resultPublisher,
-      TestRepository testRepository) {
+      TestRepository testRepository,
+      @Value("${loadtest.worker-capacity-vus:5000}") int workerCapacityVus,
+      @Value("${loadtest.max-workers-per-test:20}") int maxWorkersPerTest) {
     this.commandPublisher = commandPublisher;
     this.workerClient = workerClient;
     this.resultPublisher = resultPublisher;
     this.testRepository = testRepository;
+    this.workerCapacityVus = workerCapacityVus;
+    this.maxWorkersPerTest = maxWorkersPerTest;
   }
 
   public TestResult startTest(TestRequest req) {
@@ -75,7 +81,12 @@ public class LoadTestService {
     testRepository.insertPending(initial, req);
     emitters.put(testId, new CopyOnWriteArrayList<>());
 
-    int[] shares = LoadSplitter.computeShares(req.virtualUsers(), WORKERS_PER_TEST);
+    // Sub-run count now follows the requested load instead of being pinned at 3. Each
+    // published command is one unit of demand; the resulting backlog on test-commands
+    // is what the platform scales on.
+    int workerCount =
+        LoadSplitter.computeWorkerCount(req.virtualUsers(), workerCapacityVus, maxWorkersPerTest);
+    int[] shares = LoadSplitter.computeShares(req.virtualUsers(), workerCount);
     Set<String> subIds = ConcurrentHashMap.newKeySet();
     for (int i = 0; i < shares.length; i++) {
       if (shares[i] == 0) continue;

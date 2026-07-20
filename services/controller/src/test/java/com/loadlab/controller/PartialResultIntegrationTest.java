@@ -30,7 +30,9 @@ import org.testcontainers.utility.DockerImageName;
 // failed slice, not that the watchdog's clock fires at the right moment. Testing the
 // timing itself would need either a fake clock or a real 15+ second wait; neither is
 // worth it here, so the timing is verified by hand against a killed container.
-@SpringBootTest
+// ceil(10 VU / 4) = the 3 sub-runs this test drives; see the note in
+// MultiWorkerAggregationIntegrationTest.
+@SpringBootTest(properties = "loadtest.worker-capacity-vus=4")
 @Testcontainers
 class PartialResultIntegrationTest extends AbstractPostgresIntegrationTest {
 

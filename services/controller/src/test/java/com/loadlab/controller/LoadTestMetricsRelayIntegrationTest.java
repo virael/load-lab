@@ -20,7 +20,9 @@ import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-@SpringBootTest
+// ceil(9 VU / 3) = the 3 sub-runs these tests drive; see the note in
+// MultiWorkerAggregationIntegrationTest.
+@SpringBootTest(properties = "loadtest.worker-capacity-vus=3")
 @EmbeddedKafka(
     partitions = 1,
     topics = {"test-commands", "test-metrics"},

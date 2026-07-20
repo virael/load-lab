@@ -1,0 +1,32 @@
+# COUNTEREXAMPLE — deliberately the wrong signal for this workload. Do not apply
+# alongside worker-scaledobject.yaml; see README-scope.md in this directory.
+#
+# Why CPU is the wrong metric here: the worker's load loop from E0.4 is
+# `while (System.nanoTime() < endTime)` firing requests as fast as it can. Its CPU
+# sits near the ceiling whenever it is doing anything at all — whether it is running
+# one sub-run or ten. So this HPA cannot tell "working exactly as designed" apart
+# from "genuinely overwhelmed", and will add replicas under perfectly healthy load.
+#
+# Queue lag (worker-scaledobject.yaml) measures the thing actually worth reacting to:
+# work is waiting longer than it should. That is independent of how much CPU any one
+# worker happens to burn.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: worker-cpu-hpa
+  namespace: load-lab
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: worker
+  minReplicas: 1
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          # Percentage of resources.requests.cpu (200m), not of the limit.
+          averageUtilization: 70

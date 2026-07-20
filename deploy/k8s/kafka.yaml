@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka
+  namespace: load-lab
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: kafka }
+  template:
+    metadata:
+      labels: { app: kafka }
+    spec:
+      containers:
+        - name: kafka
+          image: apache/kafka:4.2.0
+          ports:
+            - { containerPort: 9092, name: plaintext }
+            - { containerPort: 9093, name: controller }
+          env:
+            - { name: KAFKA_NODE_ID, value: "1" }
+            - { name: KAFKA_PROCESS_ROLES, value: "broker,controller" }
+            - { name: KAFKA_LISTENERS, value: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093" }
+            # Fully qualified on purpose. A client first dials bootstrapServers, then
+            # reconnects to whatever the broker ADVERTISES — so the short name would
+            # work for pods in load-lab but break the KEDA operator in the keda
+            # namespace, which cannot resolve it. The advertised address must be
+            # reachable from every namespace that talks to Kafka.
+            - { name: KAFKA_ADVERTISED_LISTENERS, value: "PLAINTEXT://kafka.load-lab.svc.cluster.local:9092" }
+            - { name: KAFKA_CONTROLLER_LISTENER_NAMES, value: "CONTROLLER" }
+            - { name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP, value: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT" }
+            - { name: KAFKA_CONTROLLER_QUORUM_VOTERS, value: "1@kafka:9093" }
+            - { name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR, value: "1" }
+            - { name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR, value: "1" }
+            - { name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR, value: "1" }
+            # 20, not compose's 6: partitions are the hard ceiling on consumer-group
+            # parallelism, so anything above this count would be idle replicas no
+            # matter what KEDA does. Matches maxReplicaCount in the ScaledObject and
+            # loadtest.max-workers-per-test in the controller.
+            - { name: KAFKA_NUM_PARTITIONS, value: "20" }
+            # Without this the image writes to /tmp/kraft-combined-logs and the
+            # mount below is silently unused.
+            - { name: KAFKA_LOG_DIRS, value: "/var/lib/kafka/data" }
+          volumeMounts: [{ name: data, mountPath: /var/lib/kafka/data }]
+      volumes: [{ name: data, emptyDir: {} }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: kafka, namespace: load-lab }
+spec:
+  selector: { app: kafka }
+  ports:
+    - { name: plaintext, port: 9092, targetPort: 9092 }
+    # 9093 must be published too. KAFKA_CONTROLLER_QUORUM_VOTERS points at
+    # kafka:9093, and in compose that name resolves straight to the container, so a
+    # single port was enough. Through a Service, only declared ports are forwarded —
+    # without this the broker cannot reach its own controller quorum and crash-loops
+    # on "Unable to register the broker because the RPC got timed out".
+    - { name: controller, port: 9093, targetPort: 9093 }
