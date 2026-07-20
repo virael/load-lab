@@ -254,7 +254,7 @@ jobs:
       # docker/build-push-action exports these behind the scenes; a bare
       # `docker compose build` does not, so type=gha would silently no-op.
       - name: Expose GitHub Actions cache variables
-        uses: crazy-max/ghaction-github-runtime@v3
+        uses: crazy-max/ghaction-github-runtime@v4
 
       # The default `docker` driver ignores type=gha without erroring. Only the
       # docker-container driver actually honours it.
