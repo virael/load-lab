@@ -1,0 +1,127 @@
+image:
+  registry: ghcr.io
+  owner: virael
+  tag: latest
+  # IfNotPresent, not the :latest default of Always: a local cluster runs images
+  # side-loaded into its own daemon, and Always makes it try (and fail) to pull them
+  # from a registry instead. This cost a full debugging cycle in E6.3.
+  pullPolicy: IfNotPresent
+
+# The four application services. Each renders one Deployment + one Service from the
+# single loop in templates/deployment.yaml. Adding a fifth is a block here, not 40
+# lines of copied YAML.
+#
+# probes are per-service on purpose. These four genuinely differ, and flattening them
+# into one shared shape would break two of them: controller and aggregator run Flyway
+# before opening their port, so they need a long readiness runway and NO liveness
+# probe — a default liveness probe would kill them mid-migration on a slow node.
+services:
+  controller:
+    port: 8080
+    env:
+      WORKER_BASE_URL: "http://worker:8082"
+      KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/loadlab_control"
+      SPRING_DATASOURCE_USERNAME: "loadlab"
+      SPRING_DATASOURCE_PASSWORD: "loadlab"
+      LOADTEST_WORKER_CAPACITY_VUS: "5000"
+      LOADTEST_MAX_WORKERS_PER_TEST: "20"
+    resources:
+      requests: { cpu: 200m, memory: 256Mi }
+      limits: { cpu: 500m, memory: 512Mi }
+    probes:
+      readiness:
+        initialDelaySeconds: 15
+        periodSeconds: 5
+        # Tolerates coming up before postgres/kafka are reachable.
+        failureThreshold: 20
+
+  sut:
+    port: 8081
+    env: {}
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { cpu: 300m, memory: 256Mi }
+    probes:
+      readiness:
+        initialDelaySeconds: 10
+        periodSeconds: 5
+
+  worker:
+    port: 8082
+    env:
+      KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+    resources:
+      # requests.cpu is mandatory for the CPU-based HPA below: utilisation is a
+      # percentage OF THE REQUEST, not of the limit, so without it that HPA has no
+      # denominator and reports <unknown>.
+      requests: { cpu: 200m, memory: 256Mi }
+      limits: { cpu: 500m, memory: 512Mi }
+    probes:
+      readiness:
+        initialDelaySeconds: 10
+        periodSeconds: 5
+      liveness:
+        initialDelaySeconds: 20
+        periodSeconds: 10
+
+  aggregator:
+    port: 8083
+    env:
+      KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://timescaledb:5432/loadlab"
+      SPRING_DATASOURCE_USERNAME: "loadlab"
+      SPRING_DATASOURCE_PASSWORD: "loadlab"
+    resources:
+      requests: { cpu: 200m, memory: 256Mi }
+      limits: { cpu: 500m, memory: 512Mi }
+    probes:
+      readiness:
+        initialDelaySeconds: 15
+        periodSeconds: 5
+        # Slowest service to answer: Flyway runs before the port opens.
+        failureThreshold: 20
+
+kafka:
+  image: apache/kafka:4.2.0
+  # Partitions cap consumer-group parallelism, so this must be >= the autoscaler's
+  # maxReplicas or the extra replicas would sit idle. Kept in sync by hand with
+  # autoscaling.keda.maxReplicas and LOADTEST_MAX_WORKERS_PER_TEST above.
+  numPartitions: 20
+
+postgres:
+  image: postgres:17
+  database: loadlab_control
+
+timescaledb:
+  image: timescale/timescaledb:2.18.0-pg17
+  database: loadlab
+
+database:
+  username: loadlab
+  password: loadlab
+
+autoscaling:
+  keda:
+    # PREREQUISITE: with this enabled, KEDA must already be installed on the cluster.
+    # The chart renders a ScaledObject, and Helm cannot install a CRD instance whose
+    # CRD does not exist yet — the install fails outright with "no matches for kind
+    # ScaledObject". Install kedacore/keda first, or set this to false.
+    #
+    # See the header of templates/worker-scaledobject.yaml: this trigger is
+    # structurally unable to fire for the current worker. Left enabled because the
+    # object itself is correct and reconciles; the signal is what is wrong.
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 20
+    lagThreshold: "3"
+    scaleDownStabilizationSeconds: 60
+  cpuHpa:
+    # The documented counterexample from E6.3c. Off by default, and it must never run
+    # at the same time as KEDA — both write spec.replicas on the same Deployment and
+    # would fight. Enabling it is a deliberate two-flag operation:
+    #   --set autoscaling.cpuHpa.enabled=true --set autoscaling.keda.enabled=false
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 20
+    targetCPUUtilization: 70

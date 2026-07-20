@@ -302,3 +302,42 @@ jobs:
         if: always()
         working-directory: deploy
         run: docker compose down -v
+
+  helm-lint:
+    name: Helm chart lint
+    runs-on: ubuntu-latest
+    steps:
+      # v7 to match every other job in this file, not the v4 the step notes suggested.
+      - uses: actions/checkout@v7
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v5
+
+      - name: Lint chart
+        run: helm lint deploy/helm/load-lab
+
+      # Rendering goes further than lint: it executes the range/if logic, so a
+      # reference to a values key that does not exist fails here rather than on a
+      # real cluster.
+      - name: Render chart (catches template errors)
+        run: helm template load-lab deploy/helm/load-lab --set image.owner=ci-placeholder
+
+      - name: Render chart with CPU HPA instead of KEDA (alternate config)
+        run: |
+          helm template load-lab deploy/helm/load-lab \
+            --set image.owner=ci-placeholder \
+            --set autoscaling.cpuHpa.enabled=true \
+            --set autoscaling.keda.enabled=false
+
+      # The two scalers must never both render: they would fight over spec.replicas
+      # on the worker Deployment. Asserting the chart REFUSES this combination keeps
+      # the guard from silently rotting away.
+      - name: Reject both autoscalers enabled at once
+        run: |
+          if helm template load-lab deploy/helm/load-lab \
+               --set image.owner=ci-placeholder \
+               --set autoscaling.cpuHpa.enabled=true >/dev/null 2>&1; then
+            echo "::error::chart rendered with both autoscalers enabled; the mutual-exclusion guard is broken"
+            exit 1
+          fi
+          echo "guard held: chart refused to render both autoscalers"

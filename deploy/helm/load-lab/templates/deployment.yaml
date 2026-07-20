@@ -1,0 +1,56 @@
+{{/*
+One loop replaces the four near-identical Deployment+Service pairs that E6.3 kept as
+separate files. Map keys iterate in sorted order, so the rendered output is stable
+across runs — which is what makes `helm template` diffable in review.
+*/}}
+{{- range $name, $svc := .Values.services }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels: { app: {{ $name }} }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: {{ $name }} }
+  template:
+    metadata:
+      labels: { app: {{ $name }} }
+    spec:
+      containers:
+        - name: {{ $name }}
+          image: "{{ $.Values.image.registry }}/{{ $.Values.image.owner }}/load-lab-{{ $name }}:{{ $.Values.image.tag }}"
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ $svc.port }}
+          {{- with $svc.env }}
+          env:
+            {{- range $key, $value := . }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- end }}
+          resources:
+            {{- toYaml $svc.resources | nindent 12 }}
+          {{- with $svc.probes.readiness }}
+          readinessProbe:
+            httpGet: { path: /actuator/health, port: {{ $svc.port }} }
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $svc.probes.liveness }}
+          livenessProbe:
+            httpGet: { path: /actuator/health, port: {{ $svc.port }} }
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+spec:
+  selector: { app: {{ $name }} }
+  ports:
+    - port: {{ $svc.port }}
+      targetPort: {{ $svc.port }}
+{{- end }}

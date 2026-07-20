@@ -1,0 +1,67 @@
+{{/*
+Guard rail, not documentation. KEDA generates its own HPA, so enabling both scalers
+puts two HPAs on one Deployment: each reverts the other and the replica count
+oscillates. E6.3 kept them in separate directories and relied on the operator
+remembering. Templating lets the chart simply refuse to render the broken combination.
+*/}}
+{{- if and .Values.autoscaling.keda.enabled .Values.autoscaling.cpuHpa.enabled }}
+{{- fail "autoscaling.keda.enabled and autoscaling.cpuHpa.enabled are mutually exclusive: both write spec.replicas on the worker Deployment and would fight. Disable one." }}
+{{- end }}
+{{- if .Values.autoscaling.keda.enabled }}
+{{/*
+!! MEASURED LIMITATION — this trigger does not currently fire. Read before relying on it.
+
+Consumer lag is the wrong signal for THIS worker, for exactly the reason E6.1
+documented: CommandListener.onCommand() calls startRun(), which submits to an executor
+and returns immediately. Spring Kafka then commits the offset within milliseconds —
+long before the run it started has finished. So lag measures "commands not yet
+RECEIVED", never "work still in progress".
+
+Verified on a live cluster: a 1200-VU test published 12 sub-run commands, a single
+worker replica consumed all 12 instantly, and lag sat at 0 on every partition for the
+whole run. KEDA never scaled past 1 replica. That one pod was 12x oversubscribed — the
+run finished with 12,692 errors and a p99 of 10s — while the scaler saw an idle queue.
+
+Fixing it needs a worker-side change, which is a design decision, not a manifest tweak:
+  a) ack only after the run completes (manual ack + raised max.poll.interval.ms), or
+  b) scale on a metric the worker publishes — active sub-runs against capacity — via
+     KEDA's prometheus or metrics-api trigger instead.
+
+Everything below is otherwise verified working: the ScaledObject reconciles, reads the
+Kafka metric, and reports Ready=True with a live HPA.
+*/}}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: worker-kafka-scaler
+spec:
+  scaleTargetRef:
+    name: worker
+  minReplicaCount: {{ .Values.autoscaling.keda.minReplicas }}
+  maxReplicaCount: {{ .Values.autoscaling.keda.maxReplicas }}
+  # NOTE: pollingInterval and cooldownPeriod are deliberately absent. KEDA's admission
+  # webhook rejects them as no-ops here ("only relevant when minReplicaCount = 0"):
+  # above zero replicas KEDA delegates to a generated HPA, so scale-down timing is the
+  # stabilisation window below, NOT cooldownPeriod.
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          # Default is 300s, which makes a short demo look like scale-down is broken.
+          stabilizationWindowSeconds: {{ .Values.autoscaling.keda.scaleDownStabilizationSeconds }}
+  triggers:
+    - type: kafka
+      metadata:
+        # Fully qualified, NOT the bare "kafka:9092" the app pods use. This address is
+        # dialled by the KEDA operator from the keda namespace, where a short name does
+        # not resolve ("lookup kafka on 10.96.0.10:53: server misbehaving").
+        bootstrapServers: kafka.{{ .Release.Namespace }}.svc.cluster.local:9092
+        # The workers' own consumer group: lag here is "commands published but not yet
+        # picked up" — see the limitation above for why that is not what we need.
+        consumerGroup: worker-group
+        topic: test-commands
+        lagThreshold: {{ .Values.autoscaling.keda.lagThreshold | quote }}
+        # Wake-from-idle threshold; only meaningful if minReplicaCount is ever 0.
+        activationLagThreshold: "1"
+        offsetResetPolicy: earliest
+{{- end }}
