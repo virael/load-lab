@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/virael/load-lab/compare/v1.0.0...v1.0.1) (2026-07-20)
+
+
+### Continuous Integration
+
+* strengthen deploy smoke test into a real gate with automatic roll… ([#55](https://github.com/virael/load-lab/issues/55)) ([02eab64](https://github.com/virael/load-lab/commit/02eab64abc7696ae580800363add4e295f8fb706))
+
 ## 1.0.0 (2026-07-20)
 
 
