@@ -18,6 +18,10 @@ spec:
     metadata:
       labels: { app: {{ $name }} }
     spec:
+      {{- with $.Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ $name }}
           image: "{{ $.Values.image.registry }}/{{ $.Values.image.owner }}/load-lab-{{ $name }}:{{ $.Values.image.tag }}"
