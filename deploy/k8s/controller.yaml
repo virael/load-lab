@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controller
+  namespace: load-lab
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: controller }
+  template:
+    metadata:
+      labels: { app: controller }
+    spec:
+      containers:
+        - name: controller
+          image: ghcr.io/virael/load-lab-controller:latest
+          # IfNotPresent, not the :latest default of Always: a local cluster
+          # runs images side-loaded into its own daemon, and Always would make
+          # it try (and fail) to pull them from a registry instead.
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 8080 }]
+          env:
+            - { name: WORKER_BASE_URL, value: "http://worker:8082" }
+            - { name: KAFKA_BOOTSTRAP_SERVERS, value: "kafka:9092" }
+            - { name: SPRING_DATASOURCE_URL, value: "jdbc:postgresql://postgres:5432/loadlab_control" }
+            - { name: SPRING_DATASOURCE_USERNAME, value: "loadlab" }
+            - { name: SPRING_DATASOURCE_PASSWORD, value: "loadlab" }
+          readinessProbe:
+            httpGet: { path: /actuator/health, port: 8080 }
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            # Generous: this pod may come up before postgres/kafka are reachable and
+            # will restart-loop until they are. 20 x 5s tolerates that startup order.
+            failureThreshold: 20
+---
+apiVersion: v1
+kind: Service
+metadata: { name: controller, namespace: load-lab }
+spec:
+  selector: { app: controller }
+  ports: [{ port: 8080, targetPort: 8080 }]

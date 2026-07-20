@@ -33,7 +33,10 @@ import org.testcontainers.utility.DockerImageName;
 //
 // The broker image matches the one docker-compose already runs, so the test and the
 // deployed stack cannot drift apart on broker version.
-@SpringBootTest
+// Sub-run count is derived from load now, not fixed at 3, so the split this test
+// depends on is stated here instead of inherited from the production default:
+// ceil(10 VU / 4) = the 3 sub-runs it publishes below.
+@SpringBootTest(properties = "loadtest.worker-capacity-vus=4")
 @Testcontainers
 class MultiWorkerAggregationIntegrationTest extends AbstractPostgresIntegrationTest {
 

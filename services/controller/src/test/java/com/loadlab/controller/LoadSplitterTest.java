@@ -28,4 +28,25 @@ class LoadSplitterTest {
   void handlesFewerVirtualUsersThanWorkers() {
     assertThat(LoadSplitter.computeShares(2, 5)).containsExactly(1, 1, 0, 0, 0);
   }
+
+  @Test
+  void computesWorkerCountBasedOnCapacity() {
+    assertThat(LoadSplitter.computeWorkerCount(50_000, 5_000, 20)).isEqualTo(10);
+  }
+
+  @Test
+  void roundsUpSoNoVirtualUserIsLeftUnassigned() {
+    // 50_001 needs an eleventh worker for the single leftover user, not ten.
+    assertThat(LoadSplitter.computeWorkerCount(50_001, 5_000, 20)).isEqualTo(11);
+  }
+
+  @Test
+  void neverExceedsMaxWorkers() {
+    assertThat(LoadSplitter.computeWorkerCount(1_000_000, 5_000, 20)).isEqualTo(20);
+  }
+
+  @Test
+  void alwaysAtLeastOneWorker() {
+    assertThat(LoadSplitter.computeWorkerCount(1, 5_000, 20)).isEqualTo(1);
+  }
 }

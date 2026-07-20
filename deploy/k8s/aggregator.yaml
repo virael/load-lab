@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aggregator
+  namespace: load-lab
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: aggregator }
+  template:
+    metadata:
+      labels: { app: aggregator }
+    spec:
+      containers:
+        - name: aggregator
+          image: ghcr.io/virael/load-lab-aggregator:latest
+          # IfNotPresent, not the :latest default of Always: a local cluster
+          # runs images side-loaded into its own daemon, and Always would make
+          # it try (and fail) to pull them from a registry instead.
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 8083 }]
+          env:
+            - { name: KAFKA_BOOTSTRAP_SERVERS, value: "kafka:9092" }
+            - { name: SPRING_DATASOURCE_URL, value: "jdbc:postgresql://timescaledb:5432/loadlab" }
+            - { name: SPRING_DATASOURCE_USERNAME, value: "loadlab" }
+            - { name: SPRING_DATASOURCE_PASSWORD, value: "loadlab" }
+          readinessProbe:
+            httpGet: { path: /actuator/health, port: 8083 }
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            # Same reasoning as the 60s start_period in docker-compose.yml: this is
+            # the slowest service to answer, because Flyway runs before the port opens.
+            failureThreshold: 20
+---
+apiVersion: v1
+kind: Service
+metadata: { name: aggregator, namespace: load-lab }
+spec:
+  selector: { app: aggregator }
+  ports: [{ port: 8083, targetPort: 8083 }]
