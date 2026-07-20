@@ -31,7 +31,8 @@ public class LoadTestService {
   private static final int MAX_RETRIES = 2;
 
   private final Map<String, TestResult> store = new ConcurrentHashMap<>();
-  private final Map<String, CopyOnWriteArrayList<SseEmitter>> emitters = new ConcurrentHashMap<>();
+  private final Map<String, CopyOnWriteArrayList<ConflatingRelay<TestResult>>> emitters =
+      new ConcurrentHashMap<>();
   private final Map<String, String> subIdToTestId = new ConcurrentHashMap<>();
   private final Map<String, Set<String>> testSubIds = new ConcurrentHashMap<>();
   private final Map<String, TestResult> subResults = new ConcurrentHashMap<>();
@@ -129,9 +130,32 @@ public class LoadTestService {
       emitter.complete();
       return emitter;
     }
-    list.add(emitter);
-    emitter.onCompletion(() -> list.remove(emitter));
-    emitter.onTimeout(() -> list.remove(emitter));
+    // The actual send() — the blocking network write to this one browser — now happens
+    // inside this lambda, which runs on the relay's own virtual thread. The Kafka
+    // listener thread never touches the socket.
+    ConflatingRelay<TestResult> relay =
+        new ConflatingRelay<>(
+            result -> {
+              try {
+                emitter.send(SseEmitter.event().name("snapshot").data(result));
+                if (isTerminal(result.status())) emitter.complete();
+              } catch (IOException e) {
+                emitter.completeWithError(e);
+              }
+            });
+
+    list.add(relay);
+    Runnable cleanup =
+        () -> {
+          list.remove(relay);
+          relay.close();
+        };
+    emitter.onCompletion(cleanup);
+    emitter.onTimeout(cleanup);
+    // onError too, not just the two the happy path uses: a client vanishing mid-write
+    // is the single most likely way this relay ever ends, and without it the virtual
+    // thread would linger for the life of the process.
+    emitter.onError(e -> cleanup.run());
     return emitter;
   }
 
@@ -307,13 +331,10 @@ public class LoadTestService {
   private void broadcast(String id, TestResult result) {
     var list = emitters.get(id);
     if (list == null) return;
-    for (SseEmitter emitter : list) {
-      try {
-        emitter.send(SseEmitter.event().name("snapshot").data(result));
-        if (isTerminal(result.status())) emitter.complete();
-      } catch (IOException e) {
-        list.remove(emitter);
-      }
+    for (ConflatingRelay<TestResult> relay : list) {
+      // Hand off and move on. This is the whole point: a wedged browser can no longer
+      // stall the listener thread that is serving every other test in the system.
+      relay.offer(result);
     }
     if (isTerminal(result.status())) {
       // No more snapshots are coming. Drop the entry so a late subscriber falls into
