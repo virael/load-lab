@@ -112,9 +112,15 @@ jobs:
             --set image.owner=${{ github.repository_owner }} \
             --set image.tag=${{ needs.prepare.outputs.version }} \
             --set image.pullSecrets[0].name=ghcr \
-            --wait --timeout 10m
+            --atomic --wait --timeout 10m
 
+      # Layer 1 (--atomic, above) is infrastructure health: if any pod fails to become
+      # ready, Helm reverts the operation itself before the step even reports failure.
+      # Layer 2 (below) is application correctness — the whole distributed path
+      # controller -> Kafka -> worker -> SUT -> Kafka -> histogram merge. Readiness
+      # probes cannot see that, which is exactly why this is not redundant with them.
       - name: Smoke test the deployed release
+        id: smoke_test
         run: |
           set -euo pipefail
           kubectl port-forward -n load-lab svc/controller 8080:8080 &
@@ -140,8 +146,49 @@ jobs:
 
           RESULT=$(curl -sf "localhost:8080/tests/$TEST_ID/results")
           echo "Final result: $RESULT"
+
+          # Not just "something finished" — that it finished CORRECTLY.
+          # status: the run reached a terminal state at all.
+          # totalRequests: catches the inverse failure — finished instantly because
+          #   nothing actually generated traffic.
+          # errors: catches pods that came up but cannot talk to each other (wrong env
+          #   var, worker cannot reach Kafka or the SUT).
+          # p99Ms: proves the HdrHistogram encode/merge path from Phase 4 ran, rather
+          #   than a bare counter being incremented.
           echo "$RESULT" | jq -e '.status == "DONE"'
           echo "$RESULT" | jq -e '.totalRequests > 0'
+          echo "$RESULT" | jq -e '.errors == 0'
+          echo "$RESULT" | jq -e '.p99Ms > 0'
+
+      - name: Roll back on failed smoke test
+        # Scoped to this one step on purpose: a failure in `helm upgrade` has already
+        # reverted itself via --atomic, and re-rolling-back on top of that would be
+        # wrong. This fires only when the pods are healthy but the application is not.
+        if: failure() && steps.smoke_test.outcome == 'failure'
+        run: |
+          echo "--- Release history BEFORE rollback ---"
+          helm history load-lab -n load-lab
+
+          # A rollback needs somewhere to roll back TO. On this ephemeral cluster every
+          # run is a first install, so revision 1 is all there is and a bare
+          # `helm rollback` dies with "Error: release has no 0 version" — masking the
+          # real failure with a spurious one. On a persistent cluster the count is >= 2
+          # and the rollback is the whole point, so branch rather than assume.
+          REVISIONS=$(helm history load-lab -n load-lab -o json | jq 'length')
+          if [ "$REVISIONS" -ge 2 ]; then
+            helm rollback load-lab -n load-lab --wait --timeout 3m
+            echo "--- Release history AFTER rollback ---"
+            helm history load-lab -n load-lab
+          else
+            echo "Only revision 1 exists — this is a first install, so there is no
+          previous release to return to. On a persistent cluster this branch would not
+          be taken. Leaving the failed release in place for inspection."
+          fi
+
+          # Rollback restores the cluster; it must not launder the verdict. The run
+          # stays red so the Actions history reads "this deployment failed".
+          echo "::error::Smoke test failed after deployment — see rollback status above."
+          exit 1
 
       - name: Dump diagnostics on failure
         if: failure()
