@@ -1,0 +1,27 @@
+name: Release Please
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      # A PAT, not the built-in GITHUB_TOKEN. Events raised by GITHUB_TOKEN do not
+      # trigger further workflows (GitHub's own guard against infinite loops), so a
+      # Release PR opened with it would never run ci.yml — and every one of those six
+      # jobs is required by branch protection, leaving the PR permanently unmergeable.
+      # A PAT is attributed to a real user, so the rest of the pipeline fires normally.
+      #
+      # Pinned to v4: v5.0.0 exists but is a breaking release (Node 24 runtime) that
+      # this repo has not exercised. Bump deliberately, not incidentally.
+      - uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
