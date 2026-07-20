@@ -19,7 +19,11 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
-      start_period: 10s
+      # 60s, not 10s: a cold JVM on a 2-vCPU CI runner booting alongside every other
+      # service in this file is far slower than on a developer machine. This costs
+      # nothing when startup is fast — the start period ends the moment the first
+      # check succeeds, it does not delay a healthy container.
+      start_period: 60s
 
   # No host port mapping: `--scale worker=3` cannot bind the same port three times,
   # and nothing outside the compose network needs to reach a worker directly.
@@ -40,7 +44,9 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
-      start_period: 10s
+      # See the sut healthcheck. Workers are the worst case alongside the aggregator:
+      # three of them boot simultaneously, competing for the same two cores.
+      start_period: 60s
 
   kafka:
     image: apache/kafka:4.2.0
@@ -99,7 +105,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
-      start_period: 10s
+      # See the sut healthcheck.
+      start_period: 60s
 
   aggregator:
     build:
@@ -125,7 +132,10 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
-      start_period: 10s
+      # See the sut healthcheck. This is the service that actually broke CI: it boots
+      # concurrently with all three workers AND runs Flyway before opening its port,
+      # so it is the slowest of the four to answer.
+      start_period: 60s
 
   timescaledb:
     image: timescale/timescaledb:2.18.0-pg17
