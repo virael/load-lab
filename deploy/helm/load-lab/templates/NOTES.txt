@@ -1,0 +1,27 @@
+load-lab {{ .Chart.AppVersion }} installed into namespace {{ .Release.Namespace }}.
+
+Reach the controller:
+
+    kubectl port-forward -n {{ .Release.Namespace }} svc/controller 8080:8080
+
+{{ if .Values.autoscaling.keda.enabled }}
+KEDA autoscaling is ENABLED. This requires KEDA's CRDs to already exist on the
+cluster — install it BEFORE this chart, or the install fails with
+"no matches for kind ScaledObject in version keda.sh/v1alpha1":
+
+    helm repo add kedacore https://kedacore.github.io/charts
+    helm install keda kedacore/keda --namespace keda --create-namespace
+
+Be aware: the Kafka lag trigger is structurally unable to fire for the current
+worker — see the header comment in templates/worker-scaledobject.yaml. The
+ScaledObject reconciles and reports Ready, but never scales. Disable it with
+--set autoscaling.keda.enabled=false if you would rather not deploy a scaler that
+cannot act.
+{{ else }}
+KEDA autoscaling is DISABLED; the worker stays at 1 replica.
+{{ end }}
+{{- if .Values.autoscaling.cpuHpa.enabled }}
+The CPU-based HPA is ENABLED. It is a documented COUNTEREXAMPLE — CPU is the wrong
+signal for a load generator, which pegs its CPU whenever it does anything at all.
+Do not treat it as a working autoscaler.
+{{- end }}

@@ -1,0 +1,40 @@
+{{- if .Values.autoscaling.cpuHpa.enabled }}
+{{/*
+COUNTEREXAMPLE — deliberately the wrong signal for this workload, kept because being
+able to render it is the point.
+
+Why CPU is wrong here: the worker's load loop from E0.4 is
+`while (System.nanoTime() < endTime)` firing requests as fast as it can. Its CPU sits
+near the ceiling whenever it is doing anything at all — one sub-run or ten. So this HPA
+cannot tell "working exactly as designed" apart from "genuinely overwhelmed", and will
+add replicas under perfectly healthy load.
+
+Measured on a live cluster, with metrics-server enabled: a 200-VU test — just 2 sub-runs,
+comfortably inside one worker's design capacity — drove the worker to 118% of its CPU
+request, and this HPA scaled 1 -> 2 replicas. Nothing was overloaded. The worker was
+simply doing exactly what it was asked to do, at the speed it is built to do it.
+
+So the two scalers fail in opposite directions, and both were verified:
+  - the KEDA lag trigger is DEAF: 12x oversubscribed, lag 0, never scaled.
+  - this CPU HPA is SUPERSTITIOUS: nominal load, scaled anyway.
+*/}}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: worker-cpu-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: worker
+  minReplicas: {{ .Values.autoscaling.cpuHpa.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.cpuHpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          # Percentage of resources.requests.cpu (200m), not of the limit.
+          averageUtilization: {{ .Values.autoscaling.cpuHpa.targetCPUUtilization }}
+{{- end }}

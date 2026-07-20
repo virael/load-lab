@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: timescaledb
-  namespace: load-lab
+  labels: { app: timescaledb }
 spec:
   replicas: 1
   selector:
@@ -13,19 +13,20 @@ spec:
     spec:
       containers:
         - name: timescaledb
-          image: timescale/timescaledb:2.18.0-pg17
+          image: {{ .Values.timescaledb.image }}
           ports: [{ containerPort: 5432 }]
           env:
-            - { name: POSTGRES_DB, value: "loadlab" }
-            - { name: POSTGRES_USER, value: "loadlab" }
-            - { name: POSTGRES_PASSWORD, value: "loadlab" }
+            - { name: POSTGRES_DB, value: {{ .Values.timescaledb.database | quote }} }
+            - { name: POSTGRES_USER, value: {{ .Values.database.username | quote }} }
+            - { name: POSTGRES_PASSWORD, value: {{ .Values.database.password | quote }} }
             - { name: PGDATA, value: "/var/lib/postgresql/data/pgdata" }
           volumeMounts: [{ name: data, mountPath: /var/lib/postgresql/data }]
       volumes: [{ name: data, emptyDir: {} }]
 ---
 apiVersion: v1
 kind: Service
-metadata: { name: timescaledb, namespace: load-lab }
+metadata:
+  name: timescaledb
 spec:
   selector: { app: timescaledb }
   ports: [{ port: 5432, targetPort: 5432 }]
