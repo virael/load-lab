@@ -9,6 +9,8 @@ import com.loadlab.worker.RunResult;
 import com.sun.net.httpserver.HttpServer;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -69,6 +71,11 @@ class PerformanceRegressionTest {
     // Poll instead of Awaitility: this module's slim test starter does not bundle it.
     long currentP99 = awaitDone("perf-regression-1").p99Ms();
 
+    // Written here, before any early return or assertion, so the data point always
+    // lands on disk — a run that FAILED the gate is as valuable on the trend chart as
+    // one that passed.
+    writeBenchmarkOutput(currentP99);
+
     if (Boolean.getBoolean("benchmark.recordBaseline")) {
       System.out.printf(
           "%n>>> Measured p99: %dms — paste this value by hand into "
@@ -90,6 +97,17 @@ class PerformanceRegressionTest {
                 + "(allowed up to %dms, +%.0f%% margin for CI runner noise)",
             currentP99, baselineP99, allowedMax, REGRESSION_THRESHOLD * 100)
         .isLessThanOrEqualTo(allowedMax);
+  }
+
+  private void writeBenchmarkOutput(long p99Ms) throws Exception {
+    // The [{name, unit, value}] shape github-action-benchmark expects in "custom" mode
+    // — one entry per tracked metric. Relative path resolves to the module dir
+    // (services/worker) where Maven runs the test, which is where the CI job reads it.
+    String json =
+        String.format(
+            "[{\"name\": \"Worker p99 latency (%d VU)\", \"unit\": \"ms\", \"value\": %d}]",
+            VIRTUAL_USERS, p99Ms);
+    Files.writeString(Path.of("benchmark-output.json"), json);
   }
 
   private long readBaselineP99() throws Exception {

@@ -346,7 +346,10 @@ jobs:
     name: Performance regression gate (worker)
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      # write so github-action-benchmark's checkout/push plumbing works; the actual
+      # push to gh-pages is authenticated by the PAT below, but the default token still
+      # needs read for checkout.
+      contents: write
     steps:
       - uses: actions/checkout@v7
       - name: Set up JDK 21
@@ -355,8 +358,15 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
+
       - name: Run performance regression check
         working-directory: services/worker
+        # continue-on-error lets the workflow keep going after a detected regression so
+        # the data point is still archived and charted (the steps below run on
+        # `always()`); id + the final "Fail job" step re-assert the real verdict so
+        # branch protection still blocks a regressing PR.
+        continue-on-error: true
+        id: perf_test
         # -Dgroups=performance INCLUDES the @Tag("performance") test; -Dperf.excludedGroups=
         # clears the pom's default exclusion for this run only. Both are required: a
         # hardcoded excludedGroups would win over -Dgroups (JUnit excludes beat includes)
@@ -364,3 +374,30 @@ jobs:
         run: |
           chmod +x mvnw
           ./mvnw -B test -Dperf.excludedGroups= -Dgroups=performance
+
+      - name: Upload benchmark result (downloadable artifact, every run)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: benchmark-result
+          path: services/worker/benchmark-output.json
+          if-no-files-found: warn
+
+      - name: Publish to performance trend (main branch only)
+        if: always() && github.event_name != 'pull_request'
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: Worker load-generation latency
+          tool: customSmallerIsBetter
+          output-file-path: services/worker/benchmark-output.json
+          # Reuses the release-please PAT (Contents: read/write) — the built-in
+          # GITHUB_TOKEN cannot push to gh-pages under branch protection, and its pushes
+          # do not trigger Pages rebuilds.
+          github-token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          auto-push: true
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench
+
+      - name: Fail job if performance test failed
+        if: steps.perf_test.outcome == 'failure'
+        run: exit 1
