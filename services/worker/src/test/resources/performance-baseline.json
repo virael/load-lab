@@ -1,0 +1,7 @@
+{
+  "p99Ms": 999999,
+  "recordedAt": "not-yet-recorded",
+  "virtualUsers": 100,
+  "durationSeconds": 5,
+  "notes": "Measured on GitHub Actions ubuntu-latest, NOT on local hardware. Record via the performance-regression CI job (see -Dbenchmark.recordBaseline)."
+}
