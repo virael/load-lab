@@ -8,12 +8,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -145,24 +143,34 @@ public class RunExecutorService {
 
   private Mono<Void> makeRequest(String targetUrl, RunMetrics metrics) {
     long start = System.nanoTime();
-    return webClient.get()
-            .uri(targetUrl)
-            .exchangeToMono(response -> {
-                boolean isError = response.statusCode().isError();
-                return response.releaseBody().thenReturn(isError);
+    return webClient
+        .get()
+        .uri(targetUrl)
+        .exchangeToMono(
+            response -> {
+              boolean isError = response.statusCode().isError();
+              // Mandatory with exchangeToMono: unlike retrieve(), it hands you the
+              // response lifecycle. Skipping this slowly leaks pooled connections
+              // under load until the pool is exhausted.
+              return response.releaseBody().thenReturn(isError);
             })
-            .delayElement(Duration.ofMillis(100))
-            .doOnNext(isError -> {
-                long latencyMs = (System.nanoTime() - start) / 1_000_000;
-                metrics.recordRequest(latencyMs, isError);
+        .doOnNext(
+            isError -> {
+              long latencyMs = (System.nanoTime() - start) / 1_000_000;
+              metrics.recordRequest(latencyMs, isError);
             })
-            .onErrorResume(e -> {
-                long latencyMs = (System.nanoTime() - start) / 1_000_000;
-                metrics.recordRequest(latencyMs, true);
-                return Mono.empty();
+        .onErrorResume(
+            e -> {
+              // CRITICAL: an error from ONE request must not terminate the whole
+              // flatMap stream. Turn the error into an ordinary value (counted as an
+              // error in the metrics) and keep going, exactly as the old per-thread
+              // try/catch did for a single VU.
+              long latencyMs = (System.nanoTime() - start) / 1_000_000;
+              metrics.recordRequest(latencyMs, true);
+              return Mono.empty();
             })
-            .then();
-}
+        .then();
+  }
 
   private RunResult toResult(String id, String status, RunMetrics metrics) {
     RunMetrics.Snapshot snap = metrics.snapshot();
