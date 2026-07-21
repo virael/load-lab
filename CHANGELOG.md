@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.3](https://github.com/virael/load-lab/compare/v1.1.2...v1.1.3) (2026-07-21)
+
+
+### Continuous Integration
+
+* **worker:** publish performance benchmark trend to GitHub Pages ([#62](https://github.com/virael/load-lab/issues/62)) ([50d8215](https://github.com/virael/load-lab/commit/50d8215a8ded02dfc2bd7a7bd3781ebbc46a5a65))
+
 ## [1.1.2](https://github.com/virael/load-lab/compare/v1.1.1...v1.1.2) (2026-07-21)
 
 
