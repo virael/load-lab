@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784629509351,
+  "lastUpdate": 1784630350005,
   "repoUrl": "https://github.com/virael/load-lab",
   "entries": {
     "Worker load-generation latency": [
@@ -57,6 +57,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Worker p99 latency (100 VU)",
             "value": 98,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "reno19877@gmail.com",
+            "name": "Lukasz Janusz",
+            "username": "virael"
+          },
+          "committer": {
+            "email": "reno19877@gmail.com",
+            "name": "Lukasz Janusz",
+            "username": "virael"
+          },
+          "distinct": true,
+          "id": "9142da573a191de9682e31c693350fd640d21c3d",
+          "message": "chore(worker): record initial performance baseline from CI runner",
+          "timestamp": "2026-07-21T12:38:00+02:00",
+          "tree_id": "6a3ec7fe16e57124dab29c804bcbff697e97ddc2",
+          "url": "https://github.com/virael/load-lab/commit/9142da573a191de9682e31c693350fd640d21c3d"
+        },
+        "date": 1784630349744,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Worker p99 latency (100 VU)",
+            "value": 94,
             "unit": "ms"
           }
         ]
