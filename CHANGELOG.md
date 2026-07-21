@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/virael/load-lab/compare/v1.1.0...v1.1.1) (2026-07-21)
+
+
+### Tests
+
+* **worker:** add standalone benchmark harness comparing thread-per-V… ([#58](https://github.com/virael/load-lab/issues/58)) ([4daf0e6](https://github.com/virael/load-lab/commit/4daf0e698001b33319ea04957cfc1dd769dd417f))
+
 ## [1.1.0](https://github.com/virael/load-lab/compare/v1.0.1...v1.1.0) (2026-07-21)
 
 
