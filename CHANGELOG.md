@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/virael/load-lab/compare/v1.0.1...v1.1.0) (2026-07-21)
+
+
+### Features
+
+* **worker:** replace thread-per-VU load engine with reactive WebClient ([3eb30b4](https://github.com/virael/load-lab/commit/3eb30b4f5ff15f8012e4fae17b416a337f27b6f6))
+
 ## [1.0.1](https://github.com/virael/load-lab/compare/v1.0.0...v1.0.1) (2026-07-20)
 
 
