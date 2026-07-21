@@ -35,6 +35,15 @@
             <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
 
+        <!-- Added alongside (not instead of) webmvc: Spring Boot keeps the app on
+             Tomcat because the controllers use @RestController (Spring MVC). This
+             starter is here only to provide WebClient/Reactor as an outbound HTTP
+             client for load generation inside RunExecutorService. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc-test</artifactId>

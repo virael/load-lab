@@ -1,23 +1,19 @@
 package com.loadlab.worker;
 
 import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @Service
 public class RunExecutorService {
@@ -27,12 +23,12 @@ public class RunExecutorService {
   private final Map<String, CopyOnWriteArrayList<SseEmitter>> emitters = new ConcurrentHashMap<>();
 
   private final ExecutorService orchestrator = Executors.newCachedThreadPool();
-  private final HttpClient http =
-      HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
+  private final WebClient webClient;
   private final MetricsPublisher metricsPublisher;
 
-  public RunExecutorService(MetricsPublisher metricsPublisher) {
+  public RunExecutorService(MetricsPublisher metricsPublisher, WebClient webClient) {
     this.metricsPublisher = metricsPublisher;
+    this.webClient = webClient;
   }
 
   // Used by the direct REST entrypoint (POST /runs), kept for standalone
@@ -109,44 +105,17 @@ public class RunExecutorService {
     RunMetrics metrics = liveMetrics.get(id);
     store.put(id, emptyResult(id, "RUNNING"));
 
-    ExecutorService pool = Executors.newFixedThreadPool(req.virtualUsers());
-    long endTime = System.nanoTime() + req.durationSeconds() * 1_000_000_000L;
-
-    HttpRequest request =
-        HttpRequest.newBuilder(URI.create(req.targetUrl()))
-            .timeout(Duration.ofSeconds(10))
-            .GET()
-            .build();
-
-    List<Future<?>> vus = new ArrayList<>();
-    for (int i = 0; i < req.virtualUsers(); i++) {
-      vus.add(
-          pool.submit(
-              () -> {
-                while (System.nanoTime() < endTime) {
-                  long start = System.nanoTime();
-                  boolean isError = false;
-                  try {
-                    HttpResponse<Void> resp =
-                        http.send(request, HttpResponse.BodyHandlers.discarding());
-                    isError = resp.statusCode() >= 400;
-                  } catch (Exception e) {
-                    isError = true;
-                  } finally {
-                    long latencyMs = (System.nanoTime() - start) / 1_000_000;
-                    metrics.recordRequest(latencyMs, isError);
-                  }
-                }
-              }));
-    }
-
-    for (Future<?> f : vus) {
-      try {
-        f.get();
-      } catch (Exception ignored) {
-      }
-    }
-    pool.shutdown();
+    // The engine: instead of virtualUsers OS threads each blocking on http.send(),
+    // a single Flux keeps virtualUsers requests in flight over a small event-loop
+    // pool. flatMap's concurrency argument is what enforces "N virtual users".
+    Flux.range(0, Integer.MAX_VALUE)
+        .flatMap(i -> makeRequest(req.targetUrl(), metrics), req.virtualUsers())
+        .takeUntilOther(Mono.delay(Duration.ofSeconds(req.durationSeconds())))
+        .then()
+        // Safe: this runs on an `orchestrator` thread (one per test run), never on an
+        // event-loop or Kafka-listener thread. It is the deliberate seam between the
+        // blocking world (orchestrating one test) and the non-blocking one (traffic).
+        .block();
 
     RunResult finalResult = toResult(id, "DONE", metrics);
 
@@ -170,6 +139,37 @@ public class RunExecutorService {
       }
     }
     emitters.remove(id);
+  }
+
+  private Mono<Void> makeRequest(String targetUrl, RunMetrics metrics) {
+    long start = System.nanoTime();
+    return webClient
+        .get()
+        .uri(targetUrl)
+        .exchangeToMono(
+            response -> {
+              boolean isError = response.statusCode().isError();
+              // Mandatory with exchangeToMono: unlike retrieve(), it hands you the
+              // response lifecycle. Skipping this slowly leaks pooled connections
+              // under load until the pool is exhausted.
+              return response.releaseBody().thenReturn(isError);
+            })
+        .doOnNext(
+            isError -> {
+              long latencyMs = (System.nanoTime() - start) / 1_000_000;
+              metrics.recordRequest(latencyMs, isError);
+            })
+        .onErrorResume(
+            e -> {
+              // CRITICAL: an error from ONE request must not terminate the whole
+              // flatMap stream. Turn the error into an ordinary value (counted as an
+              // error in the metrics) and keep going, exactly as the old per-thread
+              // try/catch did for a single VU.
+              long latencyMs = (System.nanoTime() - start) / 1_000_000;
+              metrics.recordRequest(latencyMs, true);
+              return Mono.empty();
+            })
+        .then();
   }
 
   private RunResult toResult(String id, String status, RunMetrics metrics) {
