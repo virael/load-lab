@@ -79,6 +79,13 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
+            <!-- Runs the standalone LoadEngineBenchmark (test scope) with one command.
+                 Not wired to any build phase: it only fires via `exec:java`. -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.6.3</version>
+            </plugin>
         </plugins>
     </build>
 
