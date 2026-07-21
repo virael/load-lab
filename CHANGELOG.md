@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/virael/load-lab/compare/v1.1.1...v1.1.2) (2026-07-21)
+
+
+### Continuous Integration
+
+* **worker:** add performance regression gate using real RunExecutorSer… ([#60](https://github.com/virael/load-lab/issues/60)) ([44dd30c](https://github.com/virael/load-lab/commit/44dd30c71f379cf2b445ab94c596bc8471d95978))
+
 ## [1.1.1](https://github.com/virael/load-lab/compare/v1.1.0...v1.1.1) (2026-07-21)
 
 
