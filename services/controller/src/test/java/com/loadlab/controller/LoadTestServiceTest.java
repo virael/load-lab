@@ -17,6 +17,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
@@ -131,6 +132,25 @@ class LoadTestServiceTest {
     assertThat(captured.completed()).isTrue();
   }
 
+  // --- Regression: cleanupRouting must clear subIdStartedAt too ---
+
+  @Test
+  void cleanupClearsSubIdStartedAtToAvoidUnboundedLeak() {
+    String testId = service.startTest(new TestRequest("http://localhost/ping", 1, 1)).id();
+    String subId = testId + "-0";
+    // startTest records the sub-run's start time for the redispatch elapsed-time subtraction.
+    assertThat(startedAtKeys()).contains(subId);
+
+    // A terminal result finalizes the test, which triggers cleanupRouting().
+    service.onMetrics(new TestResult(subId, "DONE", 10, 5.0, 0, 5, 8, 10, null));
+
+    // Every other watchdog map is cleared on cleanup; subIdStartedAt must be too, or it
+    // leaks one entry per sub-run for the whole process lifetime.
+    assertThat(startedAtKeys())
+        .withFailMessage("subIdStartedAt was not cleared on cleanup — unbounded per-sub-run leak")
+        .doesNotContain(subId);
+  }
+
   // --- helpers ---
 
   private RunCommand captureSinglePublishedCommand() {
@@ -167,6 +187,17 @@ class LoadTestServiceTest {
       ((Map<String, TestResult>) field.get(service)).put(id, result);
     } catch (ReflectiveOperationException e) {
       throw new IllegalStateException("Could not seed store", e);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private Set<String> startedAtKeys() {
+    try {
+      Field field = LoadTestService.class.getDeclaredField("subIdStartedAt");
+      field.setAccessible(true);
+      return ((Map<String, Instant>) field.get(service)).keySet();
+    } catch (ReflectiveOperationException e) {
+      throw new IllegalStateException("Could not read subIdStartedAt", e);
     }
   }
 

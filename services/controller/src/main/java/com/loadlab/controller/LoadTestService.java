@@ -398,6 +398,7 @@ public class LoadTestService {
       subIdLastActivity.remove(subId);
       subIdRetryCount.remove(subId);
       subIdOriginalCommand.remove(subId);
+      subIdStartedAt.remove(subId);
     }
   }
 
