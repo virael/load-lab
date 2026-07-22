@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784721225265,
+  "lastUpdate": 1784722933680,
   "repoUrl": "https://github.com/virael/load-lab",
   "entries": {
     "Worker load-generation latency": [
@@ -492,6 +492,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Worker p99 latency (100 VU)",
             "value": 64,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "reno19877@gmail.com",
+            "name": "Łukasz Janusz",
+            "username": "virael"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bcb7f78f88c6c7c6a77f5d31f3b69bf6c21b66ad",
+          "message": "fix(controller): ignore duplicate sub-run completions to prevent late… (#80)",
+          "timestamp": "2026-07-22T14:21:05+02:00",
+          "tree_id": "d7cfda48f34752fe0fc38ed57feb7547ea3d5c28",
+          "url": "https://github.com/virael/load-lab/commit/bcb7f78f88c6c7c6a77f5d31f3b69bf6c21b66ad"
+        },
+        "date": 1784722933043,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Worker p99 latency (100 VU)",
+            "value": 82,
             "unit": "ms"
           }
         ]
