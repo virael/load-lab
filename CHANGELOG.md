@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.6](https://github.com/virael/load-lab/compare/v1.1.5...v1.1.6) (2026-07-22)
+
+
+### Tests
+
+* **sut:** cover config validation edge cases and latency range logic ([#73](https://github.com/virael/load-lab/issues/73)) ([06b1ce3](https://github.com/virael/load-lab/commit/06b1ce30bb2b01eedbb8aea15bb203d72e8a1c87))
+
 ## [1.1.5](https://github.com/virael/load-lab/compare/v1.1.4...v1.1.5) (2026-07-22)
 
 
