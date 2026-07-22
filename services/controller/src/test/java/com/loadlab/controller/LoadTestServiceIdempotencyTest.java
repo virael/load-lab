@@ -197,6 +197,63 @@ class LoadTestServiceIdempotencyTest {
         .isEqualTo(1);
   }
 
+  @Test
+  void redispatchReducesDurationByElapsedTimeInsteadOfReplayingFullWindow()
+      throws InterruptedException {
+    var commandPublisher = new RecordingCommandPublisher();
+    var service =
+        new LoadTestService(
+            commandPublisher,
+            new AlwaysHealthyWorkerClient(),
+            new RecordingResultPublisher(),
+            new NoOpTestRepository(),
+            10,
+            20);
+
+    String testId = service.startTest(new TestRequest("http://target.invalid", 10, 30)).id();
+    String subId = testId + "-0";
+
+    Thread.sleep(3000); // simulates ~3s actually elapsed before the watchdog steps in
+
+    service.handleStuckSubRun(subId);
+
+    assertThat(commandPublisher.published).hasSize(2); // initial publish + redispatch
+    RunCommand redispatched = commandPublisher.published.get(1);
+
+    assertThat(redispatched.durationSeconds())
+        .withFailMessage(
+            "Redispatch should reduce the duration by the elapsed time, not replay the full "
+                + "original window from zero")
+        .isLessThan(30)
+        .isGreaterThanOrEqualTo(25); // tolerance for test execution timing noise
+  }
+
+  @Test
+  void redispatchNeverProducesNonPositiveDuration() throws InterruptedException {
+    var commandPublisher = new RecordingCommandPublisher();
+    var service =
+        new LoadTestService(
+            commandPublisher,
+            new AlwaysHealthyWorkerClient(),
+            new RecordingResultPublisher(),
+            new NoOpTestRepository(),
+            10,
+            20);
+
+    String testId =
+        service.startTest(new TestRequest("http://target.invalid", 10, 2)).id(); // short test
+    String subId = testId + "-0";
+
+    Thread.sleep(3000); // longer than the entire original 2s durationSeconds
+
+    service.handleStuckSubRun(subId);
+
+    RunCommand redispatched = commandPublisher.published.get(1);
+    assertThat(redispatched.durationSeconds())
+        .withFailMessage("Redispatch must never produce a zero/negative duration")
+        .isGreaterThanOrEqualTo(1);
+  }
+
   private void awaitQuietly(CountDownLatch latch) {
     try {
       latch.await();

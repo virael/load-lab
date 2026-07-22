@@ -54,6 +54,9 @@ public class LoadTestService {
   private final Map<String, Instant> subIdLastActivity = new ConcurrentHashMap<>();
   private final Map<String, Integer> subIdRetryCount = new ConcurrentHashMap<>();
   private final Map<String, RunCommand> subIdOriginalCommand = new ConcurrentHashMap<>();
+  // When each sub-run first started, so a redispatch after a worker death can subtract
+  // the time already spent instead of replaying the whole original window from zero.
+  private final Map<String, Instant> subIdStartedAt = new ConcurrentHashMap<>();
 
   private final CommandPublisher commandPublisher;
   private final WorkerClient workerClient;
@@ -122,6 +125,7 @@ public class LoadTestService {
         subIdLastActivity.put(subId, Instant.now());
         subIdRetryCount.put(subId, 0);
         subIdOriginalCommand.put(subId, command);
+        subIdStartedAt.put(subId, Instant.now());
       }
     } catch (Exception e) {
       cleanupRouting(testId);
@@ -268,6 +272,21 @@ public class LoadTestService {
     if (retries < MAX_RETRIES) {
       RunCommand original = subIdOriginalCommand.get(subId);
       if (original == null) return;
+
+      // A redispatch must NOT just replay the original command: the worker that picks it
+      // up would run a full, fresh time window from zero even though part of the work
+      // already ran before the previous worker died — inflating both the wall-clock
+      // recovery time and the reported request count. Subtract the elapsed time, with a
+      // 1s floor to avoid a degenerate zero/negative window. rampDelayMs is forced to 0:
+      // the ramp made sense at test start (staggering many workers), not during failure
+      // recovery, where the work should resume immediately.
+      Instant startedAt = subIdStartedAt.getOrDefault(subId, Instant.now());
+      long elapsedSeconds = Duration.between(startedAt, Instant.now()).getSeconds();
+      long remainingSeconds = Math.max(1, original.durationSeconds() - elapsedSeconds);
+      RunCommand adjusted =
+          new RunCommand(
+              subId, original.targetUrl(), original.virtualUsers(), (int) remainingSeconds, 0L);
+
       subIdRetryCount.put(subId, retries + 1);
       // Reset the clock now, not when work resumes: the redispatched run needs a full
       // threshold to report in before we consider it dead again.
@@ -277,12 +296,13 @@ public class LoadTestService {
       // "dead" worker turns out to be merely slow and finishes too, its snapshot just
       // overwrites the same map entry. Newest wins; no request is counted twice.
       log.warn(
-          "Sub-run {} silent for over {}s, redispatching (attempt {}/{})",
+          "Sub-run {} silent for over {}s, redispatching (attempt {}/{}), {}s remaining",
           subId,
           STUCK_THRESHOLD.toSeconds(),
           retries + 1,
-          MAX_RETRIES);
-      commandPublisher.publish(original);
+          MAX_RETRIES,
+          remainingSeconds);
+      commandPublisher.publish(adjusted);
       return;
     }
 
