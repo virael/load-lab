@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.11](https://github.com/virael/load-lab/compare/v1.1.10...v1.1.11) (2026-07-22)
+
+
+### Bug Fixes
+
+* **controller:** reduce redispatched sub-run duration by elapsed time ([#82](https://github.com/virael/load-lab/issues/82)) ([0516a9e](https://github.com/virael/load-lab/commit/0516a9eea8e030ec6ec076ee0dbcd3a2e3fc64a8))
+
 ## [1.1.10](https://github.com/virael/load-lab/compare/v1.1.9...v1.1.10) (2026-07-22)
 
 
