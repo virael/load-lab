@@ -20,7 +20,7 @@ jobs:
       #
       # Pinned to v4: v5.0.0 exists but is a breaking release (Node 24 runtime) that
       # this repo has not exercised. Bump deliberately, not incidentally.
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@v5
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           config-file: release-please-config.json
