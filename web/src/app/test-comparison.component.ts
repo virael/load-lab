@@ -15,20 +15,48 @@ import { TestSummary } from './test.model';
       @if (summaryB(); as b) {
         <table>
           <thead>
-            <tr><th></th><th>Run A</th><th>Run B</th></tr>
+            <tr>
+              <th></th>
+              <th>Run A</th>
+              <th>Run B</th>
+            </tr>
           </thead>
           <tbody>
-            <tr><th>Started</th><td>{{ a.createdAt }}</td><td>{{ b.createdAt }}</td></tr>
-            <tr><th>Total requests</th><td>{{ a.totalRequests }}</td><td>{{ b.totalRequests }}</td></tr>
+            <tr>
+              <th>Started</th>
+              <td>{{ a.createdAt }}</td>
+              <td>{{ b.createdAt }}</td>
+            </tr>
+            <tr>
+              <th>Total requests</th>
+              <td>{{ a.totalRequests }}</td>
+              <td>{{ b.totalRequests }}</td>
+            </tr>
             <tr>
               <th>Avg latency (ms)</th>
               <td>{{ a.avgLatencyMs | number: '1.0-1' }}</td>
               <td>{{ b.avgLatencyMs | number: '1.0-1' }}</td>
             </tr>
-            <tr><th>p50 (ms)</th><td>{{ a.p50Ms }}</td><td>{{ b.p50Ms }}</td></tr>
-            <tr><th>p95 (ms)</th><td>{{ a.p95Ms }}</td><td>{{ b.p95Ms }}</td></tr>
-            <tr><th>p99 (ms)</th><td>{{ a.p99Ms }}</td><td>{{ b.p99Ms }}</td></tr>
-            <tr><th>Errors</th><td>{{ a.errors }}</td><td>{{ b.errors }}</td></tr>
+            <tr>
+              <th>p50 (ms)</th>
+              <td>{{ a.p50Ms }}</td>
+              <td>{{ b.p50Ms }}</td>
+            </tr>
+            <tr>
+              <th>p95 (ms)</th>
+              <td>{{ a.p95Ms }}</td>
+              <td>{{ b.p95Ms }}</td>
+            </tr>
+            <tr>
+              <th>p99 (ms)</th>
+              <td>{{ a.p99Ms }}</td>
+              <td>{{ b.p99Ms }}</td>
+            </tr>
+            <tr>
+              <th>Errors</th>
+              <td>{{ a.errors }}</td>
+              <td>{{ b.errors }}</td>
+            </tr>
           </tbody>
         </table>
 

@@ -237,10 +237,11 @@ jobs:
           node-version: '22'
           cache: npm
           cache-dependency-path: web/package-lock.json
-      - name: Install, lint, build & test
+      - name: Install, format check, lint, build & test
         working-directory: web
         run: |
           npm ci
+          npx prettier --check .
           npm run lint
           npm run build
           npm test -- --no-watch --no-progress
