@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.8](https://github.com/virael/load-lab/compare/v1.1.7...v1.1.8) (2026-07-22)
+
+
+### Documentation
+
+* update README and docker-compose for worker capacity and access details ([41645bf](https://github.com/virael/load-lab/commit/41645bf0e07b1242e6af365a6540a4c1c534a7aa))
+
 ## [1.1.7](https://github.com/virael/load-lab/compare/v1.1.6...v1.1.7) (2026-07-22)
 
 
