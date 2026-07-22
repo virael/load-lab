@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.10](https://github.com/virael/load-lab/compare/v1.1.9...v1.1.10) (2026-07-22)
+
+
+### Bug Fixes
+
+* **controller:** ignore duplicate sub-run completions to prevent late… ([#80](https://github.com/virael/load-lab/issues/80)) ([bcb7f78](https://github.com/virael/load-lab/commit/bcb7f78f88c6c7c6a77f5d31f3b69bf6c21b66ad))
+
 ## [1.1.9](https://github.com/virael/load-lab/compare/v1.1.8...v1.1.9) (2026-07-22)
 
 
