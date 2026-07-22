@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784726285490,
+  "lastUpdate": 1784727414785,
   "repoUrl": "https://github.com/virael/load-lab",
   "entries": {
     "Worker load-generation latency": [
@@ -608,6 +608,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Worker p99 latency (100 VU)",
             "value": 101,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "reno19877@gmail.com",
+            "name": "Łukasz Janusz",
+            "username": "virael"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ac264c804ebc2157454347952a628729187d7cc8",
+          "message": "fix(controller): clear subIdStartedAt on cleanup to stop unbounded leak (#84)",
+          "timestamp": "2026-07-22T15:35:47+02:00",
+          "tree_id": "54e242652fc7892c180ff06f9e9ca9a4096e1268",
+          "url": "https://github.com/virael/load-lab/commit/ac264c804ebc2157454347952a628729187d7cc8"
+        },
+        "date": 1784727414458,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Worker p99 latency (100 VU)",
+            "value": 89,
             "unit": "ms"
           }
         ]
