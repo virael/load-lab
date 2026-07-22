@@ -31,6 +31,26 @@ class SimulationStateTest {
   }
 
   @Test
+  void updateChangesOnlyMinKeepingCurrentMax() {
+    var state = new SimulationState(new SimulationProperties(10, 100, 0.0));
+
+    state.update(50L, null, null);
+
+    assertThat(state.minLatencyMs()).isEqualTo(50);
+    assertThat(state.maxLatencyMs()).isEqualTo(100);
+  }
+
+  @Test
+  void updateChangesOnlyMaxKeepingCurrentMin() {
+    var state = new SimulationState(new SimulationProperties(10, 100, 0.0));
+
+    state.update(null, 200L, null);
+
+    assertThat(state.minLatencyMs()).isEqualTo(10);
+    assertThat(state.maxLatencyMs()).isEqualTo(200);
+  }
+
+  @Test
   void updateWithAllNullsChangesNothing() {
     var state = new SimulationState(new SimulationProperties(10, 100, 0.2));
 
