@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784630350005,
+  "lastUpdate": 1784705026219,
   "repoUrl": "https://github.com/virael/load-lab",
   "entries": {
     "Worker load-generation latency": [
@@ -86,6 +86,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Worker p99 latency (100 VU)",
             "value": 94,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "205620fa6d63e661210876b7440b813d0c18c673",
+          "message": "chore(deps): bump docker/setup-buildx-action from 3 to 4 (#65)\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-07-22T09:22:42+02:00",
+          "tree_id": "f7fb0ed79fe82bfaa193b745237d2fd2e2a2bf8a",
+          "url": "https://github.com/virael/load-lab/commit/205620fa6d63e661210876b7440b813d0c18c673"
+        },
+        "date": 1784705025792,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Worker p99 latency (100 VU)",
+            "value": 93,
             "unit": "ms"
           }
         ]
