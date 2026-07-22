@@ -37,6 +37,16 @@ public class LoadTestService {
   private final Map<String, Set<String>> testSubIds = new ConcurrentHashMap<>();
   private final Map<String, TestResult> subResults = new ConcurrentHashMap<>();
 
+  // Idempotency guard: once a sub-run reaches a terminal state (DONE/FAILED/PARTIAL),
+  // any further message for the same subId is ignored. Kafka redelivery (a worker
+  // rebalance after the worker's manual-ack change) combined with this controller's
+  // own watchdog redispatch can each independently cause more than one worker to
+  // complete the same subId. Accepting only the FIRST terminal result prevents a
+  // late or duplicate completion from silently corrupting an already-finalized,
+  // already-displayed test result. Grows unboundedly for the process lifetime — the
+  // same accepted trade-off as store/subResults/testSubIds above.
+  private final Set<String> terminalSubIds = ConcurrentHashMap.newKeySet();
+
   // Watchdog state. Kafka commits the command's offset milliseconds after delivery,
   // long before the run it started actually finishes, so a partition rebalance cannot
   // recover work a worker had in flight when it died. Only the controller can notice
@@ -172,22 +182,35 @@ public class LoadTestService {
 
   @KafkaListener(topics = "test-metrics", groupId = "controller-group")
   public void onMetrics(TestResult subResult) {
-    String testId = subIdToTestId.get(subResult.id());
+    String subId = subResult.id();
+
+    // Already resolved — ignore any duplicate or late message for this subId. This is
+    // what stops a second worker's completion (from Kafka redelivery + watchdog
+    // redispatch of the same subId) from overwriting an already-finalized result.
+    if (terminalSubIds.contains(subId)) return;
+
+    String testId = subIdToTestId.get(subId);
     if (testId == null) return; // stale, unknown, or already-finished sub-run
 
     // Proof of life, refreshed on every snapshot. Deliberately AFTER the routing
     // check: re-arming the watchdog for a sub-run that was already cleaned up would
     // make a late straggler trigger a redispatch of a test that finished long ago.
-    subIdLastActivity.put(subResult.id(), Instant.now());
+    subIdLastActivity.put(subId, Instant.now());
 
-    TestResult previousSub = subResults.get(subResult.id());
+    TestResult previousSub = subResults.get(subId);
     if (previousSub != null && isTerminal(previousSub.status())) {
       // The worker's 1s scheduler can race its own DONE. Never let a stale RUNNING
       // snapshot un-finish a sub-run that already reported DONE.
       return;
     }
 
-    subResults.put(subResult.id(), subResult);
+    // Latch the terminal state BEFORE recording it, so a concurrent watchdog tick and
+    // any later duplicate both observe this subId as already resolved.
+    if (isTerminal(subResult.status())) {
+      terminalSubIds.add(subId);
+    }
+
+    subResults.put(subId, subResult);
     TestResult merged = mergeSubResults(testId);
     if (merged == null) return;
 
@@ -224,6 +247,14 @@ public class LoadTestService {
   }
 
   private void handleStuckSubRun(String subId) {
+    // Resolved by a real completion from Kafka in the meantime — do not let the
+    // watchdog overwrite that terminal result with a FAILED, nor redispatch a sub-run
+    // that already finished. Symmetric with the guard at the top of onMetrics().
+    if (terminalSubIds.contains(subId)) {
+      subIdLastActivity.remove(subId);
+      return;
+    }
+
     String testId = subIdToTestId.get(subId);
     if (testId == null) return; // test already finished and was cleaned up
 
@@ -251,7 +282,9 @@ public class LoadTestService {
 
     // Out of retries. Marking this slice FAILED is the honest option: it lets the
     // merge finish as PARTIAL instead of hanging in RUNNING forever, or — worse —
-    // reporting DONE for work that never ran.
+    // reporting DONE for work that never ran. Latch FAILED as terminal first, so a
+    // real DONE arriving just after this point is ignored rather than fighting it.
+    terminalSubIds.add(subId);
     log.error(
         "Sub-run {} still silent after {} redispatches, marking FAILED — test {} can only be PARTIAL",
         subId,
