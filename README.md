@@ -39,8 +39,8 @@ graph LR
 
 ## Tech stack
 
-**Backend:** Java 21, Spring Boot 4, Spring Kafka, Spring WebFlux (worker's load-generation engine), HdrHistogram, Flyway
-**Frontend:** Angular 22, Signal Forms, SSE
+**Backend:** Java 21, Spring Boot 4.1.0, Spring Kafka, Spring WebFlux (worker's load-generation engine), HdrHistogram, Flyway
+**Frontend:** Angular 22.0.7, Signal Forms, SSE
 **Infrastructure:** Kafka (KRaft), PostgreSQL, TimescaleDB, Docker (multi-stage, layered jars), Kubernetes via Helm, KEDA
 **CI/CD:** GitHub Actions, Testcontainers, JaCoCo, commitlint + Conventional Commits, release-please, `github-action-benchmark`
 
@@ -48,7 +48,7 @@ graph LR
 
 ```bash
 cd deploy
-docker compose up --build --scale worker=3
+docker compose up --build --scale worker=3 --wait
 ```
 
 ```bash
@@ -57,8 +57,21 @@ curl -X POST localhost:8080/tests \
   -d '{"targetUrl":"http://sut:8081/simulate","virtualUsers":30,"durationSeconds":15}'
 ```
 
+The response contains the test ID and its initial state:
+
+```json
+{"id":"<id>","status":"PENDING","totalRequests":0,"avgLatencyMs":0.0,"errors":0,"p50Ms":0,"p95Ms":0,"p99Ms":0}
+```
+
 ```bash
 curl -N localhost:8080/tests/<id>/stream
+```
+
+The stream emits Server-Sent Events in this format:
+
+```text
+event:snapshot
+data:{"id":"<id>","status":"RUNNING","totalRequests":210,"avgLatencyMs":85.10952380952381,"errors":0,"p50Ms":56,"p95Ms":237,"p99Ms":250}
 ```
 
 Or open `web/` (`ng serve`) for the dashboard.
