@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.5](https://github.com/virael/load-lab/compare/v1.1.4...v1.1.5) (2026-07-22)
+
+
+### Tests
+
+* **controller:** cover stuck sub-run watchdog, exception handler, la… ([#71](https://github.com/virael/load-lab/issues/71)) ([22d06da](https://github.com/virael/load-lab/commit/22d06da54ae7ea5475675b23b9f663ea92f0a1d6))
+
 ## [1.1.4](https://github.com/virael/load-lab/compare/v1.1.3...v1.1.4) (2026-07-22)
 
 
