@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784727617150,
+  "lastUpdate": 1784728981851,
   "repoUrl": "https://github.com/virael/load-lab",
   "entries": {
     "Worker load-generation latency": [
@@ -666,6 +666,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Worker p99 latency (100 VU)",
             "value": 76,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "reno19877@gmail.com",
+            "name": "Łukasz Janusz",
+            "username": "virael"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cb02bb911960facf68072742f1c9a57f6b797fef",
+          "message": "refactor(web): extract shared chart point-scaling logic (#87)",
+          "timestamp": "2026-07-22T16:01:53+02:00",
+          "tree_id": "ca2a7addb1670128c98b8ece6799c5fee35fd9c3",
+          "url": "https://github.com/virael/load-lab/commit/cb02bb911960facf68072742f1c9a57f6b797fef"
+        },
+        "date": 1784728980850,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Worker p99 latency (100 VU)",
+            "value": 105,
             "unit": "ms"
           }
         ]
