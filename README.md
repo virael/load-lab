@@ -1,7 +1,7 @@
 # load-lab
 
-[![CI](https://github.com/OWNER/load-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/load-lab/actions/workflows/ci.yml)
-[![Latest release](https://img.shields.io/github/v/release/OWNER/load-lab)](https://github.com/OWNER/load-lab/releases)
+[![CI](https://github.com/OWNER/load-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/virael/load-lab/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/OWNER/load-lab)](https://github.com/virael/load-lab/releases)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 A distributed load-testing platform — built primarily as a hands-on system design
@@ -33,9 +33,13 @@ graph LR
 | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
 | `controller` | REST API, splits load across workers, merges results (real HdrHistogram merging — not averaged percentiles), streams live updates via SSE, persists test history | 8080 |
 | `sut`        | Configurable target with tunable latency range and error rate                                                                                                    | 8081 |
-| `worker`     | Generates load via a reactive `WebClient` engine, measures latency, publishes metrics back through Kafka                                                         | 8082 |
+| `worker`     | Generates load via a reactive `WebClient` engine, measures latency, publishes metrics back through Kafka                                                         | 8082\* |
 | `aggregator` | Consumes merged results, computes time-windowed deltas, persists to TimescaleDB                                                                                  | 8083 |
 | `web`        | Angular dashboard — live test view, history, side-by-side run comparison                                                                                         | —    |
+
+\* Not host-published when scaled beyond one replica (`--scale worker=N`) —
+reachable from other containers on the compose network, not directly from
+the host.
 
 ## Tech stack
 

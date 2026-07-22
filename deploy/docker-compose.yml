@@ -89,6 +89,12 @@ services:
       - "8080:8080"
     environment:
       WORKER_BASE_URL: http://worker:8082
+      # Deliberately tiny so a modest test actually fans out across the scaled
+      # workers: a run splits into ceil(virtualUsers / capacity) sub-runs, so 10
+      # here means even 30 VU exercises real multi-worker splitting and histogram
+      # merging. The application default (5000) would keep any small test on a
+      # single worker.
+      LOADTEST_WORKER_CAPACITY_VUS: "10"
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/loadlab_control
       SPRING_DATASOURCE_USERNAME: loadlab
