@@ -9,30 +9,35 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import org.HdrHistogram.Histogram;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.web.reactive.function.client.WebClient;
+
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.resources.ConnectionProvider;
 
 /**
- * Standalone comparison harness — NOT a JUnit test, it does not run on `mvn test`.
+ * Standalone comparison harness — NOT a JUnit test, it does not run on `mvn
+ * test`.
  * Run manually:
- *   ./mvnw test-compile exec:java \
- *     -Dexec.mainClass=com.loadlab.worker.benchmark.LoadEngineBenchmark \
- *     -Dexec.classpathScope=test
+ * ./mvnw test-compile exec:java \
+ * -Dexec.mainClass=com.loadlab.worker.benchmark.LoadEngineBenchmark \
+ * -Dexec.classpathScope=test
  *
  * Recreates a minimal thread-per-VU engine here, OUTSIDE production code — E7.1
- * removed it from RunExecutorService. Both engines run in the SAME JVM launch, one
+ * removed it from RunExecutorService. Both engines run in the SAME JVM launch,
+ * one
  * after the other, against the same target: same hardware, same JIT state, no
  * commit-juggling.
  */
 public class LoadEngineBenchmark {
 
   private static final String TARGET_URL = "http://localhost:8081/simulate";
-  private static final int VIRTUAL_USERS = 500;
+  private static final int VIRTUAL_USERS = Integer.getInteger("benchmark.virtualUsers", 500);
   private static final int WARMUP_SECONDS = 5;
   private static final int MEASURE_SECONDS = 15;
 
@@ -66,18 +71,17 @@ public class LoadEngineBenchmark {
     System.out.println("Measuring...");
     AtomicInteger peakThreads = new AtomicInteger();
     AtomicBoolean samplerDone = new AtomicBoolean(false);
-    Thread sampler =
-        new Thread(
-            () -> {
-              while (!samplerDone.get()) {
-                peakThreads.updateAndGet(prev -> Math.max(prev, Thread.activeCount()));
-                try {
-                  Thread.sleep(100);
-                } catch (InterruptedException e) {
-                  break;
-                }
-              }
-            });
+    Thread sampler = new Thread(
+        () -> {
+          while (!samplerDone.get()) {
+            peakThreads.updateAndGet(prev -> Math.max(prev, Thread.activeCount()));
+            try {
+              Thread.sleep(100);
+            } catch (InterruptedException e) {
+              break;
+            }
+          }
+        });
     sampler.setDaemon(true);
     sampler.start();
 
@@ -132,7 +136,8 @@ public class LoadEngineBenchmark {
     }
     pool.shutdown();
     pool.awaitTermination(seconds + 10L, TimeUnit.SECONDS);
-    // shutdownNow (non-blocking): reaps this engine's selector threads so they do not
+    // shutdownNow (non-blocking): reaps this engine's selector threads so they do
+    // not
     // linger into the reactive phase and inflate its peak-thread reading. close()
     // would block until every in-flight request drains, which stalls hard against a
     // connection-capped target.
@@ -140,46 +145,34 @@ public class LoadEngineBenchmark {
     return histogram;
   }
 
-  // --- New model: WebClient, concurrency bounded by flatMap ---
-  private static Histogram reactiveEngine(int virtualUsers, int seconds) {
-    Histogram histogram = newHistogram();
-    // Size the pool to virtualUsers so the CLIENT is not the limiter. Bare
-    // HttpClient.create() would cap at ~2x cores (~32) connections, silently
-    // throttling the reactive engine far below the VU count and defeating the point
-    // of the comparison. Mirrors production WebClientConfig.
-    ConnectionProvider provider =
-        ConnectionProvider.builder("benchmark-pool")
-            .maxConnections(virtualUsers)
-            .pendingAcquireTimeout(Duration.ofSeconds(10))
-            .build();
-    WebClient webClient =
-        WebClient.builder()
-            .clientConnector(new ReactorClientHttpConnector(HttpClient.create(provider)))
-            .build();
+  private static Histogram reactiveEngine(int virtualUsers, int seconds) throws InterruptedException {
+    Histogram histogram = new Histogram(1, 60_000, 2);
 
-    Flux.range(0, Integer.MAX_VALUE)
-        .flatMap(
-            i -> {
-              long start = System.nanoTime();
-              return webClient
-                  .get()
-                  .uri(TARGET_URL)
-                  .exchangeToMono(resp -> resp.releaseBody())
-                  .doOnTerminate(
-                      () -> {
-                        synchronized (histogram) {
-                          histogram.recordValue(
-                              Math.max(1, (System.nanoTime() - start) / 1_000_000));
-                        }
-                      })
-                  .onErrorResume(e -> Mono.empty());
-            },
-            virtualUsers)
-        .takeUntilOther(Mono.delay(Duration.ofSeconds(seconds)))
-        .then()
-        .block();
+    ConnectionProvider provider = ConnectionProvider.builder("benchmark-pool")
+        .maxConnections(virtualUsers * 2)
+        .build();
+    WebClient webClient = WebClient.builder()
+        .clientConnector(new ReactorClientHttpConnector(HttpClient.create(provider)))
+        .build();
 
-    provider.dispose();
+    Disposable subscription = Flux.range(0, Integer.MAX_VALUE)
+        .flatMap(i -> {
+          long start = System.nanoTime();
+          return webClient.get().uri(TARGET_URL).exchangeToMono(resp -> resp.releaseBody())
+              .doOnTerminate(() -> {
+                synchronized (histogram) {
+                  histogram.recordValue(Math.max(1, (System.nanoTime() - start) / 1_000_000));
+                }
+              })
+              .onErrorResume(e -> Mono.empty());
+        }, virtualUsers)
+        .subscribe();
+
+    Thread.sleep(seconds * 1000L);
+
+    subscription.dispose();
+    provider.disposeLater().block(Duration.ofSeconds(5));
+
     return histogram;
   }
 }
