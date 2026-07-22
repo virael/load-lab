@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784729397645,
+  "lastUpdate": 1784729625288,
   "repoUrl": "https://github.com/virael/load-lab",
   "entries": {
     "Worker load-generation latency": [
@@ -724,6 +724,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Worker p99 latency (100 VU)",
             "value": 98,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "reno19877@gmail.com",
+            "name": "Łukasz Janusz",
+            "username": "virael"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e76b037d8f49ea8a86b69081c548cf387b082db9",
+          "message": "ci(web): enable Prettier as an enforced formatting gate alongside ESLint (#88)",
+          "timestamp": "2026-07-22T16:12:31+02:00",
+          "tree_id": "b4e3e85c631e34ba9eec4b2aef788e8777c12af5",
+          "url": "https://github.com/virael/load-lab/commit/e76b037d8f49ea8a86b69081c548cf387b082db9"
+        },
+        "date": 1784729624315,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Worker p99 latency (100 VU)",
+            "value": 93,
             "unit": "ms"
           }
         ]
