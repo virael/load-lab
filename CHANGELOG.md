@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.13](https://github.com/virael/load-lab/compare/v1.1.12...v1.1.13) (2026-07-22)
+
+
+### Continuous Integration
+
+* **web:** enable Prettier as an enforced formatting gate alongside ESLint ([#88](https://github.com/virael/load-lab/issues/88)) ([e76b037](https://github.com/virael/load-lab/commit/e76b037d8f49ea8a86b69081c548cf387b082db9))
+
 ## [1.1.12](https://github.com/virael/load-lab/compare/v1.1.11...v1.1.12) (2026-07-22)
 
 
