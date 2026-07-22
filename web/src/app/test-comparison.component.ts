@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
+import { seriesMax, toPolyline } from './chart-scale';
 import { HistoryService, Window } from './history.service';
 import { TestSummary } from './test.model';
 
@@ -138,20 +139,17 @@ export class TestComparisonComponent {
 
   // Shared max across BOTH series (the E2.3 lesson): a per-series max would make a
   // 3× busier run look "similar" to a quiet one.
-  private sharedMax = computed(() => {
-    const all = [...this.windowsA(), ...this.windowsB()].map((w) => w.requestsInWindow);
-    return Math.max(...all, 1);
-  });
+  private sharedMax = computed(() =>
+    seriesMax([...this.windowsA(), ...this.windowsB()].map((w) => w.requestsInWindow)),
+  );
 
   protected pointsA = computed(() => this.toPoints(this.windowsA()));
   protected pointsB = computed(() => this.toPoints(this.windowsB()));
 
   private toPoints(windows: Window[]): string {
-    if (windows.length === 0) return '';
-    const max = this.sharedMax();
-    const stepX = 400 / Math.max(windows.length - 1, 1);
-    return windows
-      .map((w, i) => `${i * stepX},${150 - (w.requestsInWindow / max) * 140}`)
-      .join(' ');
+    return toPolyline(
+      windows.map((w) => w.requestsInWindow),
+      this.sharedMax(),
+    );
   }
 }

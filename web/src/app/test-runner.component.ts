@@ -2,6 +2,7 @@ import { DecimalPipe } from '@angular/common';
 import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { form, FormField, min, required, validate } from '@angular/forms/signals';
+import { seriesMax, toPolyline } from './chart-scale';
 import { LoadTestStreamService } from './load-test-stream.service';
 import { LoadTestService } from './load-test.service';
 import { TestRequest, TestResult } from './test.model';
@@ -203,17 +204,9 @@ export class TestRunnerComponent {
     });
   }
 
-  protected sharedMax = computed(() => {
-    const points = this.history();
-    if (points.length === 0) return 1;
-    return Math.max(...points.map((r) => r.p99Ms), 1);
-  });
+  protected sharedMax = computed(() => seriesMax(this.history().map((r) => r.p99Ms)));
 
   private toPoints(pick: (r: TestResult) => number): string {
-    const points = this.history();
-    if (points.length === 0) return '';
-    const max = this.sharedMax();
-    const stepX = 400 / Math.max(points.length - 1, 1);
-    return points.map((r, i) => `${i * stepX},${150 - (pick(r) / max) * 140}`).join(' ');
+    return toPolyline(this.history().map(pick), this.sharedMax());
   }
 }
