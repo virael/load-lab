@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784729753729,
+  "lastUpdate": 1784730720613,
   "repoUrl": "https://github.com/virael/load-lab",
   "entries": {
     "Worker load-generation latency": [
@@ -782,6 +782,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Worker p99 latency (100 VU)",
             "value": 97,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "reno19877@gmail.com",
+            "name": "Łukasz Janusz",
+            "username": "virael"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "94f125efb32586055f77e2e0218ed77c4950bf9f",
+          "message": "ci: auto-merge Dependabot patch updates once required checks pass (#90)",
+          "timestamp": "2026-07-22T16:30:49+02:00",
+          "tree_id": "e5d84bf87421a4589dcf3182efa04a2bc4988784",
+          "url": "https://github.com/virael/load-lab/commit/94f125efb32586055f77e2e0218ed77c4950bf9f"
+        },
+        "date": 1784730719461,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Worker p99 latency (100 VU)",
+            "value": 50,
             "unit": "ms"
           }
         ]
