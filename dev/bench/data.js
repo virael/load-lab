@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784705026219,
+  "lastUpdate": 1784705571923,
   "repoUrl": "https://github.com/virael/load-lab",
   "entries": {
     "Worker load-generation latency": [
@@ -115,6 +115,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Worker p99 latency (100 VU)",
             "value": 93,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b8191ab992d72e986d9a207aa941649edee949f8",
+          "message": "chore(deps): bump googleapis/release-please-action from 4 to 5 (#66)\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>\nCo-authored-by: Łukasz Janusz <reno19877@gmail.com>",
+          "timestamp": "2026-07-22T09:26:41+02:00",
+          "tree_id": "d193d01420ef43a95ddb7e834935a150f9f2559d",
+          "url": "https://github.com/virael/load-lab/commit/b8191ab992d72e986d9a207aa941649edee949f8"
+        },
+        "date": 1784705571168,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Worker p99 latency (100 VU)",
+            "value": 91,
             "unit": "ms"
           }
         ]
