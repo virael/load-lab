@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784719621522,
+  "lastUpdate": 1784721053876,
   "repoUrl": "https://github.com/virael/load-lab",
   "entries": {
     "Worker load-generation latency": [
@@ -434,6 +434,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Worker p99 latency (100 VU)",
             "value": 75,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "reno19877@gmail.com",
+            "name": "Łukasz Janusz",
+            "username": "virael"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8c8f34f7b6996034b60ddacb0db9e3f77a21e8c1",
+          "message": "fix: address architectural audit findings (KEDA ack-timing, Helm DB c… (#78)",
+          "timestamp": "2026-07-22T13:49:50+02:00",
+          "tree_id": "3cef3314bf81f29976fa73a1afeb9e92fa6c3b9a",
+          "url": "https://github.com/virael/load-lab/commit/8c8f34f7b6996034b60ddacb0db9e3f77a21e8c1"
+        },
+        "date": 1784721053540,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Worker p99 latency (100 VU)",
+            "value": 86,
             "unit": "ms"
           }
         ]
