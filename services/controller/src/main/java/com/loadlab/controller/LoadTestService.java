@@ -222,20 +222,7 @@ public class LoadTestService {
     TestResult merged = mergeSubResults(testId);
     if (merged == null) return;
 
-    store.put(testId, merged);
-    broadcast(testId, merged);
-
-    // Hand the already-merged result to the aggregator's pipeline. Published on every
-    // snapshot (RUNNING included) so it can compute per-window deltas, not just the
-    // final total.
-    resultPublisher.publish(merged);
-    // Persist the latest merged state onto the same row (UPDATE by id), keeping the
-    // in-memory store as the hot read path for getResult()/SSE.
-    testRepository.updateProgress(merged);
-
-    if (isTerminal(merged.status())) {
-      cleanupRouting(testId);
-    }
+    finalizeMerged(testId, merged);
   }
 
   // A worker cannot detect its own death — that is what a crash is. So the controller
@@ -324,12 +311,25 @@ public class LoadTestService {
 
     TestResult merged = mergeSubResults(testId);
     if (merged == null) return;
-    store.put(testId, merged);
-    broadcast(testId, merged);
     // Same tail as onMetrics: a PARTIAL is a real outcome and has to reach the
     // aggregator and the durable row, not just the SSE stream.
+    finalizeMerged(testId, merged);
+  }
+
+  // Shared finalize tail for both onMetrics and the watchdog's FAILED path: push the
+  // merged result to the in-memory store, the SSE relay, the aggregator pipeline and the
+  // durable row, then drop routing state once the whole test is terminal.
+  private void finalizeMerged(String testId, TestResult merged) {
+    store.put(testId, merged);
+    broadcast(testId, merged);
+    // Hand the already-merged result to the aggregator's pipeline. Published on every
+    // snapshot (RUNNING included) so it can compute per-window deltas, not just the
+    // final total.
     resultPublisher.publish(merged);
+    // Persist the latest merged state onto the same row (UPDATE by id), keeping the
+    // in-memory store as the hot read path for getResult()/SSE.
     testRepository.updateProgress(merged);
+
     if (isTerminal(merged.status())) {
       cleanupRouting(testId);
     }
