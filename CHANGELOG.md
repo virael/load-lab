@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.1.12](https://github.com/virael/load-lab/compare/v1.1.11...v1.1.12) (2026-07-22)
+
+
+### Bug Fixes
+
+* **controller:** clear subIdStartedAt on cleanup to stop unbounded leak ([#84](https://github.com/virael/load-lab/issues/84)) ([ac264c8](https://github.com/virael/load-lab/commit/ac264c804ebc2157454347952a628729187d7cc8))
+
+
+### Code Refactoring
+
+* **controller:** extract shared finalize tail from onMetrics and… ([#85](https://github.com/virael/load-lab/issues/85)) ([713e3de](https://github.com/virael/load-lab/commit/713e3dedbe9308847055a4d1a69c9e7322e1cc5d))
+* **web:** extract shared chart point-scaling logic ([#87](https://github.com/virael/load-lab/issues/87)) ([cb02bb9](https://github.com/virael/load-lab/commit/cb02bb911960facf68072742f1c9a57f6b797fef))
+
 ## [1.1.11](https://github.com/virael/load-lab/compare/v1.1.10...v1.1.11) (2026-07-22)
 
 
