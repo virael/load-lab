@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784713233049,
+  "lastUpdate": 1784713760895,
   "repoUrl": "https://github.com/virael/load-lab",
   "entries": {
     "Worker load-generation latency": [
@@ -260,6 +260,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Worker p99 latency (100 VU)",
             "value": 103,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "reno19877@gmail.com",
+            "name": "Łukasz Janusz",
+            "username": "virael"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "06b1ce30bb2b01eedbb8aea15bb203d72e8a1c87",
+          "message": "test(sut): cover config validation edge cases and latency range logic (#73)",
+          "timestamp": "2026-07-22T11:48:16+02:00",
+          "tree_id": "d771c3957b4053a3ca59aafc792bb7b74f4e9384",
+          "url": "https://github.com/virael/load-lab/commit/06b1ce30bb2b01eedbb8aea15bb203d72e8a1c87"
+        },
+        "date": 1784713760430,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Worker p99 latency (100 VU)",
+            "value": 33,
             "unit": "ms"
           }
         ]
