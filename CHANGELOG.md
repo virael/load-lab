@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.7](https://github.com/virael/load-lab/compare/v1.1.6...v1.1.7) (2026-07-22)
+
+
+### Documentation
+
+* add comprehensive project README (Apache 2.0, verified against running stack) ([#75](https://github.com/virael/load-lab/issues/75)) ([94e1685](https://github.com/virael/load-lab/commit/94e16854e4384a2ae9feb61da5c6d9a2c04e5431))
+
 ## [1.1.6](https://github.com/virael/load-lab/compare/v1.1.5...v1.1.6) (2026-07-22)
 
 
