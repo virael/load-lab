@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784711906131,
+  "lastUpdate": 1784713058379,
   "repoUrl": "https://github.com/virael/load-lab",
   "entries": {
     "Worker load-generation latency": [
@@ -202,6 +202,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Worker p99 latency (100 VU)",
             "value": 30,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "reno19877@gmail.com",
+            "name": "Łukasz Janusz",
+            "username": "virael"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "22d06da54ae7ea5475675b23b9f663ea92f0a1d6",
+          "message": "test(controller): cover stuck sub-run watchdog, exception handler, la… (#71)",
+          "timestamp": "2026-07-22T11:36:25+02:00",
+          "tree_id": "97aeb9582d98f6dc9950b1391c649a4d1cd80308",
+          "url": "https://github.com/virael/load-lab/commit/22d06da54ae7ea5475675b23b9f663ea92f0a1d6"
+        },
+        "date": 1784713057576,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Worker p99 latency (100 VU)",
+            "value": 89,
             "unit": "ms"
           }
         ]
