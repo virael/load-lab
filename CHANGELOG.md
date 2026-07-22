@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.9](https://github.com/virael/load-lab/compare/v1.1.8...v1.1.9) (2026-07-22)
+
+
+### Bug Fixes
+
+* address architectural audit findings (KEDA ack-timing, Helm DB c… ([#78](https://github.com/virael/load-lab/issues/78)) ([8c8f34f](https://github.com/virael/load-lab/commit/8c8f34f7b6996034b60ddacb0db9e3f77a21e8c1))
+
 ## [1.1.8](https://github.com/virael/load-lab/compare/v1.1.7...v1.1.8) (2026-07-22)
 
 
