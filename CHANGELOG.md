@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.4](https://github.com/virael/load-lab/compare/v1.1.3...v1.1.4) (2026-07-22)
+
+
+### Documentation
+
+* **worker:** record final thread-per-VU vs reactive benchmark results ([#69](https://github.com/virael/load-lab/issues/69)) ([d037ba8](https://github.com/virael/load-lab/commit/d037ba89712bdfb6d94537036a0d1793eaaa85af))
+
 ## [1.1.3](https://github.com/virael/load-lab/compare/v1.1.2...v1.1.3) (2026-07-21)
 
 
