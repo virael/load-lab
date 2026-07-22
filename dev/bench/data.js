@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784727414785,
+  "lastUpdate": 1784727617150,
   "repoUrl": "https://github.com/virael/load-lab",
   "entries": {
     "Worker load-generation latency": [
@@ -637,6 +637,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Worker p99 latency (100 VU)",
             "value": 89,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "reno19877@gmail.com",
+            "name": "Łukasz Janusz",
+            "username": "virael"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "713e3dedbe9308847055a4d1a69c9e7322e1cc5d",
+          "message": "refactor(controller): extract shared finalize tail from onMetrics and… (#85)",
+          "timestamp": "2026-07-22T15:39:12+02:00",
+          "tree_id": "207761d90117dbb84989c9bc7d29df6eb21ea38e",
+          "url": "https://github.com/virael/load-lab/commit/713e3dedbe9308847055a4d1a69c9e7322e1cc5d"
+        },
+        "date": 1784727616772,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Worker p99 latency (100 VU)",
+            "value": 76,
             "unit": "ms"
           }
         ]
