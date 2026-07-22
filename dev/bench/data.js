@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784715967569,
+  "lastUpdate": 1784717830150,
   "repoUrl": "https://github.com/virael/load-lab",
   "entries": {
     "Worker load-generation latency": [
@@ -376,6 +376,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Worker p99 latency (100 VU)",
             "value": 36,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "reno19877@gmail.com",
+            "name": "Lukasz Janusz",
+            "username": "virael"
+          },
+          "committer": {
+            "email": "reno19877@gmail.com",
+            "name": "Lukasz Janusz",
+            "username": "virael"
+          },
+          "distinct": true,
+          "id": "41645bf0e07b1242e6af365a6540a4c1c534a7aa",
+          "message": "docs: update README and docker-compose for worker capacity and access details",
+          "timestamp": "2026-07-22T12:55:19+02:00",
+          "tree_id": "28289e78b0797497f92dbf67d07498e4d42085d5",
+          "url": "https://github.com/virael/load-lab/commit/41645bf0e07b1242e6af365a6540a4c1c534a7aa"
+        },
+        "date": 1784717829283,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Worker p99 latency (100 VU)",
+            "value": 103,
             "unit": "ms"
           }
         ]
