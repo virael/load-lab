@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784705571923,
+  "lastUpdate": 1784711730178,
   "repoUrl": "https://github.com/virael/load-lab",
   "entries": {
     "Worker load-generation latency": [
@@ -144,6 +144,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Worker p99 latency (100 VU)",
             "value": 91,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "reno19877@gmail.com",
+            "name": "Łukasz Janusz",
+            "username": "virael"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d037ba89712bdfb6d94537036a0d1793eaaa85af",
+          "message": "docs(worker): record final thread-per-VU vs reactive benchmark results (#69)",
+          "timestamp": "2026-07-22T11:14:21+02:00",
+          "tree_id": "1e798b5f3dd6f6a42c39bd4ee142c59ebaa153e1",
+          "url": "https://github.com/virael/load-lab/commit/d037ba89712bdfb6d94537036a0d1793eaaa85af"
+        },
+        "date": 1784711728313,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Worker p99 latency (100 VU)",
+            "value": 104,
             "unit": "ms"
           }
         ]
