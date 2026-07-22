@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784723166071,
+  "lastUpdate": 1784726007230,
   "repoUrl": "https://github.com/virael/load-lab",
   "entries": {
     "Worker load-generation latency": [
@@ -550,6 +550,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Worker p99 latency (100 VU)",
             "value": 87,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "reno19877@gmail.com",
+            "name": "Łukasz Janusz",
+            "username": "virael"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0516a9eea8e030ec6ec076ee0dbcd3a2e3fc64a8",
+          "message": "fix(controller): reduce redispatched sub-run duration by elapsed time (#82)",
+          "timestamp": "2026-07-22T15:12:16+02:00",
+          "tree_id": "40d2a6480961604255a2f3620517cc3888deacea",
+          "url": "https://github.com/virael/load-lab/commit/0516a9eea8e030ec6ec076ee0dbcd3a2e3fc64a8"
+        },
+        "date": 1784726006342,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Worker p99 latency (100 VU)",
+            "value": 57,
             "unit": "ms"
           }
         ]
