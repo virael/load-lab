@@ -29,9 +29,9 @@ services:
     env:
       WORKER_BASE_URL: "http://worker:8082"
       KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
-      SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/loadlab_control"
-      SPRING_DATASOURCE_USERNAME: "loadlab"
-      SPRING_DATASOURCE_PASSWORD: "loadlab"
+      # SPRING_DATASOURCE_* are NOT set here: they are injected by
+      # templates/deployment.yaml from the single `database.postgres` block below,
+      # so one --set changes both the app and the postgres container.
       LOADTEST_WORKER_CAPACITY_VUS: "5000"
       LOADTEST_MAX_WORKERS_PER_TEST: "20"
     resources:
@@ -77,9 +77,8 @@ services:
     port: 8083
     env:
       KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
-      SPRING_DATASOURCE_URL: "jdbc:postgresql://timescaledb:5432/loadlab"
-      SPRING_DATASOURCE_USERNAME: "loadlab"
-      SPRING_DATASOURCE_PASSWORD: "loadlab"
+      # SPRING_DATASOURCE_* injected by templates/deployment.yaml from the single
+      # `database.timescaledb` block below (see the controller note above).
     resources:
       requests: { cpu: 200m, memory: 256Mi }
       limits: { cpu: 500m, memory: 512Mi }
@@ -99,15 +98,23 @@ kafka:
 
 postgres:
   image: postgres:17
-  database: loadlab_control
 
 timescaledb:
   image: timescale/timescaledb:2.18.0-pg17
-  database: loadlab
 
+# Single source of truth for database name/credentials. Consumed by BOTH the app
+# containers (SPRING_DATASOURCE_* injected in templates/deployment.yaml) and the
+# database containers (templates/postgres.yaml, templates/timescaledb.yaml), so
+# `--set database.postgres.password=...` changes the app and the DB in lockstep.
 database:
-  username: loadlab
-  password: loadlab
+  postgres:
+    name: loadlab_control
+    user: loadlab
+    password: loadlab
+  timescaledb:
+    name: loadlab
+    user: loadlab
+    password: loadlab
 
 autoscaling:
   keda:

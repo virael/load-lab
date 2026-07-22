@@ -8,6 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -33,12 +34,19 @@ public class RunExecutorService {
 
   // Used by the direct REST entrypoint (POST /runs), kept for standalone
   // debugging — generates its own id. The live, Kafka-driven flow uses the
-  // overload below with a controller-issued id instead.
+  // overload below with a controller-issued id instead. No Kafka message backs a
+  // REST call, so there is nothing to acknowledge.
   public RunResult startRun(RunRequest req) {
-    return startRun(UUID.randomUUID().toString(), req, 0);
+    return startRun(UUID.randomUUID().toString(), req, 0, null);
   }
 
+  // Backwards-compatible overload for callers that have no Kafka acknowledgement
+  // to hand back (the REST path and the tests). Delegates with a null ack.
   public RunResult startRun(String id, RunRequest req, long rampDelayMs) {
+    return startRun(id, req, rampDelayMs, null);
+  }
+
+  public RunResult startRun(String id, RunRequest req, long rampDelayMs, Acknowledgment ack) {
     store.put(id, emptyResult(id, "PENDING"));
     liveMetrics.put(id, new RunMetrics());
     emitters.put(id, new CopyOnWriteArrayList<>());
@@ -49,6 +57,11 @@ public class RunExecutorService {
         () -> {
           sleepQuietly(rampDelayMs);
           runLoad(id, req);
+          // Acknowledge to Kafka ONLY now — after the traffic generation has
+          // actually finished, not on mere command receipt. This keeps the
+          // consumer lag that KEDA autoscales on reflecting real in-flight work.
+          // ack is null on the REST/test path, where there is nothing to commit.
+          if (ack != null) ack.acknowledge();
         });
     return store.get(id);
   }

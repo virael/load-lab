@@ -34,6 +34,22 @@ spec:
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
+            {{- if eq $name "controller" }}
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://postgres:5432/{{ $.Values.database.postgres.name }}"
+            - name: SPRING_DATASOURCE_USERNAME
+              value: {{ $.Values.database.postgres.user | quote }}
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: {{ $.Values.database.postgres.password | quote }}
+            {{- end }}
+            {{- if eq $name "aggregator" }}
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://timescaledb:5432/{{ $.Values.database.timescaledb.name }}"
+            - name: SPRING_DATASOURCE_USERNAME
+              value: {{ $.Values.database.timescaledb.user | quote }}
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: {{ $.Values.database.timescaledb.password | quote }}
+            {{- end }}
           {{- end }}
           resources:
             {{- toYaml $svc.resources | nindent 12 }}

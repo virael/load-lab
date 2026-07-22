@@ -16,12 +16,15 @@ spec:
           image: {{ .Values.timescaledb.image }}
           ports: [{ containerPort: 5432 }]
           env:
-            - { name: POSTGRES_DB, value: {{ .Values.timescaledb.database | quote }} }
-            - { name: POSTGRES_USER, value: {{ .Values.database.username | quote }} }
-            - { name: POSTGRES_PASSWORD, value: {{ .Values.database.password | quote }} }
+            - { name: POSTGRES_DB, value: {{ .Values.database.timescaledb.name | quote }} }
+            - { name: POSTGRES_USER, value: {{ .Values.database.timescaledb.user | quote }} }
+            - { name: POSTGRES_PASSWORD, value: {{ .Values.database.timescaledb.password | quote }} }
             - { name: PGDATA, value: "/var/lib/postgresql/data/pgdata" }
           volumeMounts: [{ name: data, mountPath: /var/lib/postgresql/data }]
-      volumes: [{ name: data, emptyDir: {} }]
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: timescaledb-data
 ---
 apiVersion: v1
 kind: Service
@@ -30,3 +33,15 @@ metadata:
 spec:
   selector: { app: timescaledb }
   ports: [{ port: 5432, targetPort: 5432 }]
+---
+# Real persistence: the time-series windows must survive a pod restart. Binds
+# against the kind cluster's default local-path StorageClass (see postgres.yaml).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: timescaledb-data
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 2Gi
