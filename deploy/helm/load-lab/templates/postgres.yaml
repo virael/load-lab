@@ -22,13 +22,16 @@ spec:
           image: {{ .Values.postgres.image }}
           ports: [{ containerPort: 5432 }]
           env:
-            - { name: POSTGRES_DB, value: {{ .Values.postgres.database | quote }} }
-            - { name: POSTGRES_USER, value: {{ .Values.database.username | quote }} }
-            - { name: POSTGRES_PASSWORD, value: {{ .Values.database.password | quote }} }
+            - { name: POSTGRES_DB, value: {{ .Values.database.postgres.name | quote }} }
+            - { name: POSTGRES_USER, value: {{ .Values.database.postgres.user | quote }} }
+            - { name: POSTGRES_PASSWORD, value: {{ .Values.database.postgres.password | quote }} }
             # The image refuses to initialise into a non-empty mount root.
             - { name: PGDATA, value: "/var/lib/postgresql/data/pgdata" }
           volumeMounts: [{ name: data, mountPath: /var/lib/postgresql/data }]
-      volumes: [{ name: data, emptyDir: {} }]
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: postgres-data
 ---
 apiVersion: v1
 kind: Service
@@ -37,3 +40,16 @@ metadata:
 spec:
   selector: { app: postgres }
   ports: [{ port: 5432, targetPort: 5432 }]
+---
+# Real persistence: emptyDir would drop every persisted test-run row on pod
+# restart. The kind cluster used by cd-deploy.yml ships a default StorageClass
+# (local-path-provisioner), so this binds without extra configuration.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 2Gi

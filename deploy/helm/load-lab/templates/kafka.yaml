@@ -37,7 +37,10 @@ spec:
             # below is silently unused.
             - { name: KAFKA_LOG_DIRS, value: "/var/lib/kafka/data" }
           volumeMounts: [{ name: data, mountPath: /var/lib/kafka/data }]
-      volumes: [{ name: data, emptyDir: {} }]
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: kafka-data
 ---
 apiVersion: v1
 kind: Service
@@ -52,3 +55,16 @@ spec:
     # enough. Through a Service only declared ports are forwarded — without this the
     # broker cannot reach its own controller quorum and crash-loops.
     - { name: controller, port: 9093, targetPort: 9093 }
+---
+# Real persistence: KRaft metadata and the commit log must survive a restart, or
+# the broker comes back with no topics and every consumer offset lost. Binds
+# against the kind cluster's default local-path StorageClass (see postgres.yaml).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kafka-data
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 2Gi

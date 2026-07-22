@@ -1,7 +1,7 @@
 # load-lab
 
-[![CI](https://github.com/OWNER/load-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/virael/load-lab/actions/workflows/ci.yml)
-[![Latest release](https://img.shields.io/github/v/release/OWNER/load-lab)](https://github.com/virael/load-lab/releases)
+[![CI](https://github.com/virael/load-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/virael/load-lab/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/virael/load-lab)](https://github.com/virael/load-lab/releases)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 A distributed load-testing platform — built primarily as a hands-on system design
@@ -80,6 +80,10 @@ data:{"id":"<id>","status":"RUNNING","totalRequests":210,"avgLatencyMs":85.10952
 
 Or open `web/` (`ng serve`) for the dashboard.
 
+> **Note:** the `loadlab`/`loadlab` credentials in `docker-compose.yml` and
+> `deploy/helm/load-lab/values.yaml` are demo-only placeholders, not intended
+> for any real deployment.
+
 ## Deploying
 
 ```bash
@@ -116,11 +120,13 @@ not just describe:
   need four different protections — three come free from Kafka's pull
   model, the fourth (SSE to the browser) needed an explicit, tested
   conflating relay.
-- **Reactive isn't automatically faster.** The worker's thread-per-VU and
-  reactive engines perform comparably at moderate concurrency — the
-  reactive advantage only shows up past a few thousand concurrent
-  connections. See `docs/phase-7-benchmark-results.md` for the actual
-  measured numbers.
+- **Reactive isn't automatically faster.** At 500 VU the worker's thread-per-VU
+  and reactive engines are within noise of each other; at 3000 VU thread-per-VU
+  was actually *faster* on this hardware (20,213 vs 17,331 req/s, p99 305 vs
+  387 ms). Reactive's measured, decisive win is elsewhere — a flat ~18-thread
+  footprint at any concurrency versus 3,143 OS threads for thread-per-VU. No
+  throughput crossover appeared by 3000 VU. See
+  `docs/phase-7-benchmark-results.md` for the numbers.
 
 ## License
 
