@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.14](https://github.com/virael/load-lab/compare/v1.1.13...v1.1.14) (2026-07-22)
+
+
+### Continuous Integration
+
+* auto-merge Dependabot patch updates once required checks pass ([#90](https://github.com/virael/load-lab/issues/90)) ([94f125e](https://github.com/virael/load-lab/commit/94f125efb32586055f77e2e0218ed77c4950bf9f))
+
 ## [1.1.13](https://github.com/virael/load-lab/compare/v1.1.12...v1.1.13) (2026-07-22)
 
 
