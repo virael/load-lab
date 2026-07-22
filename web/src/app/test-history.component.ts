@@ -63,9 +63,7 @@ export class TestHistoryComponent {
   }
 
   protected toggle(id: string): void {
-    this.selected.update((ids) =>
-      ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id],
-    );
+    this.selected.update((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
   }
 
   protected compare(): void {
