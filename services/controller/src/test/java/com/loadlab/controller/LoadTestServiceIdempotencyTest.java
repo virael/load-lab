@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import org.junit.jupiter.api.Test;
 
 // Pure unit test of onMetrics()'s idempotency guard: no Spring, no Kafka broker.
@@ -138,5 +139,69 @@ class LoadTestServiceIdempotencyTest {
         .withFailMessage(
             "Expected exactly one DONE publish to test-results; the duplicate must not produce a second")
         .isEqualTo(1);
+  }
+
+  @Test
+  void concurrentDuplicateCompletionsForSameSubIdCommitExactlyOnce() throws InterruptedException {
+    var resultPublisher = new RecordingResultPublisher();
+    var service = newService(resultPublisher);
+
+    String testId = service.startTest(new TestRequest("http://target.invalid", 10, 5)).id();
+    String subId = testId + "-0";
+
+    // Two independent "completions" of the same subId arriving genuinely in parallel —
+    // exactly the PR scenario: a worker dies mid-run, Kafka redelivers the command, and
+    // a second worker also finishes the work.
+    var resultFromOriginalWorker = new TestResult(subId, "DONE", 500, 20.0, 0, 15, 18, 20, null);
+    var resultFromRedeliveredWorker =
+        new TestResult(subId, "DONE", 9999, 999.0, 50, 900, 950, 999, null);
+
+    var ready = new CountDownLatch(2);
+    var start = new CountDownLatch(1);
+
+    Thread t1 =
+        new Thread(
+            () -> {
+              ready.countDown();
+              awaitQuietly(start);
+              service.onMetrics(resultFromOriginalWorker);
+            });
+    Thread t2 =
+        new Thread(
+            () -> {
+              ready.countDown();
+              awaitQuietly(start);
+              service.onMetrics(resultFromRedeliveredWorker);
+            });
+
+    t1.start();
+    t2.start();
+    ready.await();
+    start.countDown(); // release both threads at the same instant — maximises the real collision
+
+    t1.join(5000);
+    t2.join(5000);
+
+    TestResult finalResult = service.getResult(testId);
+    // Exactly ONE of the two competing results wins — never an intermediate state.
+    assertThat(finalResult.totalRequests()).isIn(500L, 9999L);
+
+    long terminalPublishCount =
+        resultPublisher.published.stream()
+            .filter(r -> testId.equals(r.id()) && "DONE".equals(r.status()))
+            .count();
+    assertThat(terminalPublishCount)
+        .withFailMessage(
+            "Under real concurrency, expected EXACTLY one terminal publish, not two — this is the "
+                + "TOCTOU bug this test is meant to catch")
+        .isEqualTo(1);
+  }
+
+  private void awaitQuietly(CountDownLatch latch) {
+    try {
+      latch.await();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
   }
 }

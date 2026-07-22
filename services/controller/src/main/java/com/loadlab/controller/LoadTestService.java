@@ -204,10 +204,14 @@ public class LoadTestService {
       return;
     }
 
-    // Latch the terminal state BEFORE recording it, so a concurrent watchdog tick and
-    // any later duplicate both observe this subId as already resolved.
+    // Atomic claim: only the thread that WINS add() (returns true) proceeds to the
+    // write/broadcast/publish below. A concurrent second terminal message for the same
+    // subId — or a concurrent watchdog decision — safely no-ops here. Set.add() closes
+    // the check-then-act window the previous (contains()-then-add()) version left open.
     if (isTerminal(subResult.status())) {
-      terminalSubIds.add(subId);
+      if (!terminalSubIds.add(subId)) {
+        return;
+      }
     }
 
     subResults.put(subId, subResult);
@@ -246,7 +250,9 @@ public class LoadTestService {
     }
   }
 
-  private void handleStuckSubRun(String subId) {
+  // Package-private (not private) so a same-package test can drive it directly without
+  // an artificial hook. Called only from detectStuckSubRuns() in production.
+  void handleStuckSubRun(String subId) {
     // Resolved by a real completion from Kafka in the meantime — do not let the
     // watchdog overwrite that terminal result with a FAILED, nor redispatch a sub-run
     // that already finished. Symmetric with the guard at the top of onMetrics().
@@ -282,9 +288,12 @@ public class LoadTestService {
 
     // Out of retries. Marking this slice FAILED is the honest option: it lets the
     // merge finish as PARTIAL instead of hanging in RUNNING forever, or — worse —
-    // reporting DONE for work that never ran. Latch FAILED as terminal first, so a
-    // real DONE arriving just after this point is ignored rather than fighting it.
-    terminalSubIds.add(subId);
+    // reporting DONE for work that never ran. Atomically claim FAILED as terminal; if
+    // a real completion won the race first, back off rather than overwrite it.
+    if (!terminalSubIds.add(subId)) {
+      subIdLastActivity.remove(subId);
+      return;
+    }
     log.error(
         "Sub-run {} still silent after {} redispatches, marking FAILED — test {} can only be PARTIAL",
         subId,
