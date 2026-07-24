@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784890880835,
+  "lastUpdate": 1784900816313,
   "repoUrl": "https://github.com/virael/load-lab",
   "entries": {
     "Worker load-generation latency": [
@@ -869,6 +869,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Worker p99 latency (100 VU)",
             "value": 38,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "reno19877@gmail.com",
+            "name": "Łukasz Janusz",
+            "username": "virael"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4970bb70d61cded1e0140909a76403216089a981",
+          "message": "ci: skip commitlint on Dependabot commits to unblock dependency PRs (#95)",
+          "timestamp": "2026-07-24T15:45:36+02:00",
+          "tree_id": "905519bf98c3b87e287b7c7536783a16b9ecbd7b",
+          "url": "https://github.com/virael/load-lab/commit/4970bb70d61cded1e0140909a76403216089a981"
+        },
+        "date": 1784900815516,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Worker p99 latency (100 VU)",
+            "value": 57,
             "unit": "ms"
           }
         ]
