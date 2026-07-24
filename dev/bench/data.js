@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784730906428,
+  "lastUpdate": 1784890880835,
   "repoUrl": "https://github.com/virael/load-lab",
   "entries": {
     "Worker load-generation latency": [
@@ -840,6 +840,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Worker p99 latency (100 VU)",
             "value": 130,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "482563b327fbc25347655a482de95fe7d923512e",
+          "message": "chore(deps): bump dependabot/fetch-metadata from 2 to 3 (#92)\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-07-24T11:00:17Z",
+          "tree_id": "4b38fed05d4a69a500176419d1c041c677b1bcee",
+          "url": "https://github.com/virael/load-lab/commit/482563b327fbc25347655a482de95fe7d923512e"
+        },
+        "date": 1784890879977,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Worker p99 latency (100 VU)",
+            "value": 38,
             "unit": "ms"
           }
         ]
