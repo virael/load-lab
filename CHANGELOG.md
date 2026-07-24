@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.15](https://github.com/virael/load-lab/compare/v1.1.14...v1.1.15) (2026-07-24)
+
+
+### Continuous Integration
+
+* skip commitlint on Dependabot commits to unblock dependency PRs ([#95](https://github.com/virael/load-lab/issues/95)) ([4970bb7](https://github.com/virael/load-lab/commit/4970bb70d61cded1e0140909a76403216089a981))
+
 ## [1.1.14](https://github.com/virael/load-lab/compare/v1.1.13...v1.1.14) (2026-07-22)
 
 
