@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785317476440,
+  "lastUpdate": 1785923599761,
   "repoUrl": "https://github.com/virael/load-lab",
   "entries": {
     "Worker load-generation latency": [
@@ -956,6 +956,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Worker p99 latency (100 VU)",
             "value": 66,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cc63fdda4c296acc349c9ed5eb32d35d47ef5031",
+          "message": "chore(deps): bump the angular group across 1 directory with 9 updates (#102)\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-08-05T11:52:08+02:00",
+          "tree_id": "80ff390e20f0bc0803814f340db2aa47b0e78e3e",
+          "url": "https://github.com/virael/load-lab/commit/cc63fdda4c296acc349c9ed5eb32d35d47ef5031"
+        },
+        "date": 1785923598903,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Worker p99 latency (100 VU)",
+            "value": 87,
             "unit": "ms"
           }
         ]
