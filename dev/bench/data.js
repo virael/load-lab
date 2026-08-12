@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785923599761,
+  "lastUpdate": 1786529796454,
   "repoUrl": "https://github.com/virael/load-lab",
   "entries": {
     "Worker load-generation latency": [
@@ -985,6 +985,35 @@ window.BENCHMARK_DATA = {
           {
             "name": "Worker p99 latency (100 VU)",
             "value": 87,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b1ef2be5a017bc01a7145210995f8e7f656fff65",
+          "message": "chore(deps-dev): bump typescript-eslint from 8.65.0 to 8.66.0 in /web (#105)\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-08-12T12:15:32+02:00",
+          "tree_id": "bf98c39e45e65e2c526ff481712580afc1d7f1f0",
+          "url": "https://github.com/virael/load-lab/commit/b1ef2be5a017bc01a7145210995f8e7f656fff65"
+        },
+        "date": 1786529794809,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Worker p99 latency (100 VU)",
+            "value": 50,
             "unit": "ms"
           }
         ]
