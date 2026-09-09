@@ -1,7 +1,9 @@
 version: 2
 updates:
   - package-ecosystem: 'maven'
-    directory: '/services/controller'
+    directories:
+      - '/services/controller'
+      - '/services/sut'
     schedule:
       interval: 'weekly'
     open-pull-requests-limit: 5
@@ -9,36 +11,53 @@ updates:
       spring-boot:
         patterns:
           - 'org.springframework.boot:*'
-
-  - package-ecosystem: 'maven'
-    directory: '/services/sut'
-    schedule:
-      interval: 'weekly'
-    open-pull-requests-limit: 5
-    groups:
-      spring-boot:
+      maven-minor-patch:
         patterns:
-          - 'org.springframework.boot:*'
+          - '*'
+        update-types:
+          - 'minor'
+          - 'patch'
 
   - package-ecosystem: 'npm'
     directory: '/web'
     schedule:
       interval: 'weekly'
     open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
     groups:
       angular:
         patterns:
           - '@angular/*'
           - '@angular-eslint/*'
+      npm-minor-patch:
+        patterns:
+          - '*'
+        update-types:
+          - 'minor'
+          - 'patch'
 
   - package-ecosystem: 'npm'
     directory: '/'
     schedule:
       interval: 'weekly'
     open-pull-requests-limit: 3
+    cooldown:
+      default-days: 7
+    groups:
+      root-minor-patch:
+        patterns:
+          - '*'
+        update-types:
+          - 'minor'
+          - 'patch'
 
   - package-ecosystem: 'github-actions'
     directory: '/'
     schedule:
       interval: 'weekly'
     open-pull-requests-limit: 3
+    groups:
+      actions:
+        patterns:
+          - '*'

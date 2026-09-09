@@ -17,8 +17,16 @@ jobs:
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
-      - name: Enable auto-merge for patch updates
-        if: steps.metadata.outputs.update-type == 'version-update:semver-patch'
+      - name: Enable auto-merge for patch updates and the minor+patch groups
+        # Two independent triggers. `update-type` is the HIGHEST semver bump across the
+        # whole PR, so a single-package patch merges via the first clause. Grouped PRs
+        # report their group name in `dependency-group`; the groups listed here are the
+        # ones deliberately scoped to minor+patch (plus actions), so they self-merge even
+        # when `update-type` resolves to semver-minor. Everything else — a lone minor/
+        # major, or the spring-boot/angular groups — falls through to manual review.
+        if: >-
+          steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+          contains(fromJSON('["maven-minor-patch", "npm-minor-patch", "root-minor-patch", "actions"]'), steps.metadata.outputs.dependency-group)
         run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
